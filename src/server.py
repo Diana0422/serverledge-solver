@@ -1,4 +1,4 @@
-from src.proto import solver_pb2_grpc, solver_pb2
+from proto import solver_pb2_grpc, solver_pb2
 import grpc
 from concurrent import futures
 import properties as p

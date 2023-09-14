@@ -15,7 +15,27 @@ pip install -r requirements.txt
 ```
 
 ## Attivare gRPC
-Posizionarsi all'interno della cartella src/proto ed eseguire il seguente comando:
+Lato Server: posizionarsi all'interno della cartella src/proto ed eseguire il seguente comando:
 ```
 python3 -m grpc_tools.protoc -I . --python_out=. --pyi_out=. --grpc_python_out=. *.proto
 ```
+
+Lato Client: posizionarsi all'interno della cartella client/src/proto ed eseguire il seguente comando:
+```
+protoc --proto_path proto --go_out proto --go-grpc_out proto proto/*.proto
+```
+
+## Go modules
+Per poter inizializzare i go modules e testare il lato client (seguire in caso le istruzioni a linea di comando):
+```
+go mod init client
+go mod tidy
+go build
+```
+
+## Build dell'immagine Docker
+Per poter fare la build dell'immagine di docker, assegnandole un nome eseguire il seguente comando:
+```
+docker build -t serverledge-solver .
+```
+
