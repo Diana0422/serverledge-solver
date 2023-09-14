@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import solver_pb2 as solver__pb2
+from . import solver_pb2 as solver__pb2
 
 
 class SolverStub(object):

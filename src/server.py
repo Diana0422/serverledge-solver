@@ -1,4 +1,3 @@
-import proto.solver_pb2_grpc
 from src.proto import solver_pb2_grpc, solver_pb2
 import grpc
 from concurrent import futures
