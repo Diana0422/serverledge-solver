@@ -34,8 +34,8 @@ go build
 ```
 
 ## Build dell'immagine Docker
-Per poter fare la build dell'immagine di docker, assegnandole un nome eseguire il seguente comando:
+Per poter fare la build dell'immagine di docker, assegnandole un nome e un indirizzo dove ascoltare per eventuali richieste, eseguire il seguente comando:
 ```
-docker build -t serverledge-solver .
+docker run --publish 2500:2500 --name Solver serverledge-solver
 ```
 
