@@ -8,19 +8,21 @@ warm_start = False
 BETA_COST = 0.0
 
 
-def update_probabilities(local, cloud, aggregated_edge_memory, sim,
+def update_probabilities(local,
+                         cloud,
+                         aggregated_edge_memory,
+                         metrics,
                          arrival_rates,
                          serv_time, serv_time_cloud, serv_time_edge,
                          init_time_local, init_time_cloud, init_time_edge,
                          offload_time_cloud, offload_time_edge,
                          bandwidth_cloud, bandwidth_edge,
-                         cold_start_p_local, cold_start_p_cloud,
-                         cold_start_p_edge, budget=-1,
+                         cold_start_p_local, cold_start_p_cloud, cold_start_p_edge,
+                         budget=-1,
                          local_usable_memory_coeff=1.0):
-    VERBOSE = sim.verbosity
-
-    F = sim.functions
-    C = sim.classes
+    VERBOSE = metrics.verbosity
+    F = metrics.functions
+    C = metrics.classes
     F_C = [(f, c) for f in F for c in C]
 
     if VERBOSE > 1:
@@ -58,7 +60,7 @@ def update_probabilities(local, cloud, aggregated_edge_memory, sim,
                 -1.0 / serv_time_cloud[f] * (c.max_rt - init_time_cloud[f] - offload_time_cloud - tx_time)))
         if c.max_rt - offload_time_cloud - tx_time > 0.0:
             p += (1.0 - cold_start_p_cloud[f]) * (
-                        1.0 - math.exp(-1.0 / serv_time_cloud[f] * (c.max_rt - offload_time_cloud - tx_time)))
+                    1.0 - math.exp(-1.0 / serv_time_cloud[f] * (c.max_rt - offload_time_cloud - tx_time)))
         deadline_satisfaction_prob_cloud[(f, c)] = p
 
         p = 0.0
@@ -69,7 +71,7 @@ def update_probabilities(local, cloud, aggregated_edge_memory, sim,
                     -1.0 / serv_time_edge[f] * (c.max_rt - init_time_edge[f] - offload_time_edge - tx_time)))
             if c.max_rt - offload_time_edge - tx_time > 0.0:
                 p += (1.0 - cold_start_p_edge[f]) * (
-                            1.0 - math.exp(-1.0 / serv_time_edge[f] * (c.max_rt - offload_time_edge - tx_time)))
+                        1.0 - math.exp(-1.0 / serv_time_edge[f] * (c.max_rt - offload_time_edge - tx_time)))
         except:
             pass
         deadline_satisfaction_prob_edge[(f, c)] = p
@@ -84,15 +86,15 @@ def update_probabilities(local, cloud, aggregated_edge_memory, sim,
         print(f"Deadline Sat ProbE: {deadline_satisfaction_prob_edge}")
         print("------------------------------")
 
-    prob += (pl.lpSum([c.utility * arrival_rates[(f, c)] * \
-                       (pL[f][c] * deadline_satisfaction_prob_local[(f, c)] + \
-                        pE[f][c] * deadline_satisfaction_prob_edge[(f, c)] + \
-                        pC[f][c] * deadline_satisfaction_prob_cloud[(f, c)]) for f, c in F_C]) - \
-             pl.lpSum([c.penalty * arrival_rates[(f, c)] * \
-                       (pL[f][c] * (1.0 - deadline_satisfaction_prob_local[(f, c)]) + \
-                        pE[f][c] * (1.0 - deadline_satisfaction_prob_edge[(f, c)]) + \
-                        pC[f][c] * (1.0 - deadline_satisfaction_prob_cloud[(f, c)])) for f, c in F_C]) - \
-             BETA_COST * pl.lpSum([cloud.cost * arrival_rates[(f, c)] * \
+    prob += (pl.lpSum([c.utility * arrival_rates[(f, c)] *
+                       (pL[f][c] * deadline_satisfaction_prob_local[(f, c)] +
+                        pE[f][c] * deadline_satisfaction_prob_edge[(f, c)] +
+                        pC[f][c] * deadline_satisfaction_prob_cloud[(f, c)]) for f, c in F_C]) -
+             pl.lpSum([c.penalty * arrival_rates[(f, c)] *
+                       (pL[f][c] * (1.0 - deadline_satisfaction_prob_local[(f, c)]) +
+                        pE[f][c] * (1.0 - deadline_satisfaction_prob_edge[(f, c)]) +
+                        pC[f][c] * (1.0 - deadline_satisfaction_prob_cloud[(f, c)])) for f, c in F_C]) -
+             BETA_COST * pl.lpSum([cloud.cost * arrival_rates[(f, c)] *
                                    pC[f][c] * serv_time_cloud[f] * f.memory / 1024 for f, c in F_C]), "objUtilCost")
 
     # Probability
@@ -120,7 +122,7 @@ def update_probabilities(local, cloud, aggregated_edge_memory, sim,
 
     # Max hourly budget
     if budget is not None and budget > 0.0:
-        prob += (pl.lpSum([cloud.cost * arrival_rates[(f, c)] * \
+        prob += (pl.lpSum([cloud.cost * arrival_rates[(f, c)] *
                            pC[f][c] * serv_time_cloud[f] * f.memory / 1024 for f, c in F_C]) <= budget / 3600)
 
     status = solve(prob)
@@ -161,7 +163,7 @@ def update_probabilities(local, cloud, aggregated_edge_memory, sim,
     return probs
 
 
-def solve (problem):
+def solve(problem):
     global warm_start
     solver_name = os.environ.get("PULP_SOLVER", "GLPK_CMD")
 
