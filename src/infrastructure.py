@@ -3,12 +3,12 @@ from faas import Node
 
 class Region:
 
-    def __init__(self, name: str, default_cloud=None):
+    def __init__(self, name: str, is_cloud=True):
         self.name = name
-        self.default_cloud = default_cloud
+        self.cloud = is_cloud
 
     def is_cloud(self):
-        return self.default_cloud is None
+        return self.cloud
 
     def __eq__(self, other):
         return self.name == other.name
@@ -123,7 +123,25 @@ class Network:
     def __repr__(self):
         s = ""
         for r in self.regions:
-            s += f"-------- {r} ({r.is_cloud()} - {r.default_cloud}) -------\n"
+            s += f"-------- {r} (is_cloud: {r.is_cloud()}) -------\n"
             for n in self.region_nodes[r]:
                 s += repr(n) + "\n"
         return s
+
+
+if __name__ == "__main__":
+    # TODO set regions, latency and bandwidth from config
+    region_cloud = Region("cloud", True)
+    region_edge1 = Region("edge1", False)
+    region_edge2 = Region("edge2", False)
+    regions = [region_cloud, region_edge1, region_edge2]
+    net_latency = {}
+    bandwidth_mbps = {}
+
+    # Add node cloud
+    network = Network(regions=regions, network_latency=net_latency, bandwidth_mbps=bandwidth_mbps)
+    network.add_node(Node("nuvola", 1000, region=region_cloud, speedup=1), region=region_cloud)
+    network.add_node(Node("pippo", 100, region=region_edge1, speedup=1), region=region_edge1)
+    network.add_node(Node("pluto", 100, region=region_edge1, speedup=1), region=region_edge1)
+    network.add_node(Node("topolino", 100, region=region_edge2, speedup=1), region=region_edge2)
+    print(network)

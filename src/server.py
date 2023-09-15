@@ -5,9 +5,8 @@ import grpc
 from concurrent import futures
 import threading
 import properties as p
-from infrastructure import Network
+from infrastructure import Network, Region
 from faas import Node
-
 import optimizer as opt
 
 WAIT_TIME_SECONDS = 120
@@ -17,14 +16,14 @@ class NetworkMetrics:
 
     def __init__(self, network: Network):
         self.network = network
-        self.clock_start = time.clock()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
+        self.clock_start = time.process_time()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
 
         self.functions = {}  # mantiene il riferimento alle funzioni in arrivo (nome_funzione: Function)
         self.classes = {}  # mantiene il riferimento alle classi in arrivo (nome_classe: QoSClass)
         self.verbosity = 1  # TODO: impostare config
         self.cloud_cost = 0  # TODO: impostare config
-        self.budget = 100    # TODO: impostare config
-        self.local_budget = self.budget / len(self.network.get_edge_nodes())
+        self.budget = 100  # TODO: impostare config
+        self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
 
         self.aggregated_edge_memory = 0.0  # memoria aggregata nell'edge per f
         self.bandwidth_cloud = 0.0
@@ -39,7 +38,6 @@ class NetworkMetrics:
         self.cold_start = {}  # probabilità di cold start locale per (f,c)
         self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c)
         self.cold_start_edge = {}  # probabilità di cold start edge per (f,c)
-
         # self.init_time_local = {f: simulation.init_time[(f,self.node)] for f in simulation.functions}
         # self.init_time_cloud = {f: simulation.init_time[(f,self.cloud)] for f in simulation.functions}
         # self.init_time_edge = {} # updated periodically
@@ -67,7 +65,7 @@ class NetworkMetrics:
         :return: None
         """
         # Aggiorna il clock per l'intervallo di calcolo successivo
-        clock_stop = time.clock()
+        clock_stop = time.process_time()
         t = clock_stop - self.clock_start
         self.clock_start = clock_stop
 
@@ -146,9 +144,29 @@ def update_membership() -> Node:
     Aggiorna la membership dei nodi della rete e ritorna il nodo da cui proviene la richiesta di esecuzione
     :return: Node (local)
     """
+    #TODO
     # check if nodo è presente nella lista dei nodi della rete
     # se è presente allora non aggiungerlo
     # se non è presente allora aggiungilo
+
+
+def initializing_network() -> Network:
+    # TODO set regions, latency and bandwidth from config
+    region_cloud = Region("cloud", True)
+    region_edge1 = Region("edge1", False)
+    region_edge2 = Region("edge2", False)
+    regions = [region_cloud, region_edge1, region_edge2]
+    net_latency = {}
+    bandwidth_mbps = {}
+
+    # Add node cloud
+    network = Network(regions=regions, network_latency=net_latency, bandwidth_mbps=bandwidth_mbps)
+    network.add_node(Node("nuvola", 1000, region=region_cloud, speedup=1), region=region_cloud)
+    network.add_node(Node("pippo", 100, region=region_edge1, speedup=1), region=region_edge1)
+    network.add_node(Node("pluto", 100, region=region_edge1, speedup=1), region=region_edge1)
+    network.add_node(Node("topolino", 100, region=region_edge2, speedup=1), region=region_edge2)
+    print(network)
+    return network
 
 
 # the gRPC server functions
@@ -156,12 +174,8 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
     def __init__(self):
         # Initialize network
-        # TODO set regions, latency and bandwidth from config
-        regions = 1
-        net_latency = {(): 0.0}
-        bandwidth_mbps = {(): 1}
-
-        self.network = Network(regions=regions, network_latency=net_latency, bandwidth_mbps=bandwidth_mbps)
+        print("initializing network")
+        self.network = initializing_network()
         self.net_metrics = NetworkMetrics(self.network)
 
     # this is called by the client when is required the execution of a function
@@ -203,26 +217,27 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
         # FIXME: mancano alcuni dati da calcolare
-        opt.update_probabilities(local, cloud,
-                                 aggregated_edge_memory=0, #fixme da calcolare
-                                 metrics=self.net_metrics,
-                                 arrival_rates=self.net_metrics.arrival_rates,
-                                 serv_time=self.net_metrics.service_time,
-                                 serv_time_cloud=self.net_metrics.service_time_cloud,
-                                 serv_time_edge=self.net_metrics.service_time_edge,
-                                 init_time_local=self.net_metrics.init_time,
-                                 init_time_cloud=self.net_metrics.init_time_cloud,
-                                 init_time_edge=self.net_metrics.init_time_edge,
-                                 offload_time_cloud=0.0, offload_time_edge=0.0, #fixme da calcolare
-                                 bandwidth_cloud=1, bandwidth_edge=1, #fixme da calcolare
-                                 cold_start_p_local=self.net_metrics.cold_start,
-                                 cold_start_p_cloud=self.net_metrics.cold_start_cloud,
-                                 cold_start_p_edge=self.net_metrics.cold_start_edge,
-                                 budget=self.net_metrics.local_budget,
-                                 local_usable_memory_coeff=1.0 #fixme da calcolare
-        )
+        probs = opt.update_probabilities(local, cloud,
+                                         aggregated_edge_memory=0,  # fixme da calcolare
+                                         metrics=self.net_metrics,
+                                         arrival_rates=self.net_metrics.arrival_rates,
+                                         serv_time=self.net_metrics.service_time,
+                                         serv_time_cloud=self.net_metrics.service_time_cloud,
+                                         serv_time_edge=self.net_metrics.service_time_edge,
+                                         init_time_local=self.net_metrics.init_time,
+                                         init_time_cloud=self.net_metrics.init_time_cloud,
+                                         init_time_edge=self.net_metrics.init_time_edge,
+                                         offload_time_cloud=0.0, offload_time_edge=0.0,  # fixme da calcolare
+                                         bandwidth_cloud=1, bandwidth_edge=1,  # fixme da calcolare
+                                         cold_start_p_local=self.net_metrics.cold_start,
+                                         cold_start_p_cloud=self.net_metrics.cold_start_cloud,
+                                         cold_start_p_edge=self.net_metrics.cold_start_edge,
+                                         budget=self.net_metrics.local_budget,
+                                         local_usable_memory_coeff=1.0  # fixme da calcolare
+                                         )
 
         # TODO impacchetta le probabilità aggiornate e restituisci al client
+        print(probs)
 
 
 def serve():
