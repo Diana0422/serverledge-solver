@@ -43,7 +43,7 @@ class TestMembership(unittest.TestCase):
         self.metrics = s.NetworkMetrics(s.initializing_network())
 
     def test_node_arrival(self):
-        pass
+        local = s.update_membership()
 
     def test_node_exit(self):
         pass

@@ -1,7 +1,7 @@
 package main
 
 import (
-	pb "client/proto/github.com/grussorusso/serverledge"
+	pb "client/src/proto/github.com/grussorusso/serverledge"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
@@ -84,7 +84,6 @@ func solve() {
 
 	arrivals := float32(cInfo.arrivals)
 
-	/* FIXME: TEST
 	cInfo = classFunctionInfo{
 		functionInfo:             nil,
 		probExecute:              0,
@@ -94,25 +93,25 @@ func solve() {
 		arrivalCount:             0,
 		share:                    0,
 		timeSlotsWithoutArrivals: 0,
-		className:                "",
+		className:                "Bella Class",
 	}
 
 	fInfo = functionInfo{
-		name: "Bella funzione",
-		count: [2]int64{4, 4},
-		meanDuration: [2]float64{3.5, 5.5},
+		name:             "Bella function",
+		count:            [2]int64{4, 4},
+		meanDuration:     [2]float64{3.5, 5.5},
 		varianceDuration: [2]float64{2.3, 1.2},
-		coldStartCount : [2]int64{3, 1},
-		timeSlotCount: [2]int64{5, 5},
-		missed: 0,
-		initTime: [2]float64{1.0, 0.5},
-		memory: 100,
-		cpu: 10,
-		probCold: [2]float64{0.5, 0.5},
+		coldStartCount:   [2]int64{3, 1},
+		timeSlotCount:    [2]int64{5, 5},
+		missed:           0,
+		initTime:         [2]float64{1.0, 0.5},
+		memory:           100,
+		cpu:              10,
+		probCold:         [2]float64{0.5, 0.5},
 		invokingClasses: map[string]*classFunctionInfo{
 			"class1": &cInfo,
 		},
-	} */
+	}
 
 	functionList := make([]*pb.Function, 0)
 	classList := make([]*pb.QosClass, 0)

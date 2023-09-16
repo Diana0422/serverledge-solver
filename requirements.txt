@@ -18,4 +18,5 @@ conf
 grpcio-tools
 grpcio
 jproperties
+git+https://github.com/jplana/python-etcd
 six==1.16.0

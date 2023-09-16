@@ -4,10 +4,9 @@ from proto import solver_pb2_grpc, solver_pb2
 import grpc
 from concurrent import futures
 import threading
-import properties as p
-from infrastructure import Network, Region
-from faas import Node
-import optimizer as opt
+from src.imported import properties as p, optimizer as opt
+from src.imported.infrastructure import Network, Region
+from src.imported.faas import Node
 
 WAIT_TIME_SECONDS = 120
 
@@ -150,6 +149,7 @@ def update_membership() -> Node:
     # se non è presente allora aggiungilo
 
 
+
 def initializing_network() -> Network:
     # TODO set regions, latency and bandwidth from config
     region_cloud = Region("cloud", True)
@@ -196,7 +196,8 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         cloud = self.network.get_cloud_nodes()[0]
 
         # Call metrics update
-        for _, function in request.functions:
+        print(request.functions)
+        for function in request.functions:
             for inv in function.invocations:
                 function_name = function.name
                 class_name = inv.qos_class
