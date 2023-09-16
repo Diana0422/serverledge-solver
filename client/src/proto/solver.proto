@@ -17,12 +17,8 @@ message Request {
   repeated Function functions = 3;            // functions
   repeated QosClass classes = 4;              // classes
   required float cost_cloud = 5;              // cost of the request if executed on cloud
-  required float cost_edge = 6;               // cost of the request if executed on edge todo to be calculated
-  required float memory_cloud = 8;            // total memory available on cloud
-  required float memory_edge = 9;             // total memory memory available on edge  todo to be calculated
-  required float memory_local = 10;           // memory available on local node todo to be calculated
-  required float cpu_cloud = 11;              // cpu available on cloud
-  required float cpu_edge = 12;               // cpu available on edge todo to be calculated
+  required float memory_local = 10;           // memory available on local node
+  required float cpu_local = 11;              // cpu available on local node
 }
 
 message FunctionInvocation {
@@ -58,10 +54,11 @@ message QosClass {
 
 message ClassResponse {
   required string name = 1;
-  required float pe = 2;
-  required float po = 3;
-  required float pd = 4;
-  required float share = 5;
+  required float pL = 2;
+  required float pC = 3;
+  required float pE = 4;
+  required float pD = 5;
+  required float share = 6;
 }
 
 message FunctionResponse {

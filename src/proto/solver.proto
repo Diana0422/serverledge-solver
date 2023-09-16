@@ -12,12 +12,13 @@ service Solver {
 
 // argument
 message Request {
-  required float offload_latency = 1;
-  repeated Function functions = 2;
-  repeated QosClass classes = 3;
-  required float cost = 4;
-  required float memory = 5;
-  required float cpu = 6;
+  required float offload_latency_cloud = 1;   // offload latency cloud
+  required float offload_latency_edge = 2;    // offload latency edge todo to be calculated
+  repeated Function functions = 3;            // functions
+  repeated QosClass classes = 4;              // classes
+  required float cost_cloud = 5;              // cost of the request if executed on cloud
+  required float memory_local = 10;           // memory available on local node
+  required float cpu_local = 11;              // cpu available on local node
 }
 
 message FunctionInvocation {
@@ -53,10 +54,11 @@ message QosClass {
 
 message ClassResponse {
   required string name = 1;
-  required float pe = 2;
-  required float po = 3;
-  required float pd = 4;
-  required float share = 5;
+  required float pL = 2;
+  required float pC = 3;
+  required float pE = 4;
+  required float pD = 5;
+  required float share = 6;
 }
 
 message FunctionResponse {

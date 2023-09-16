@@ -6,20 +6,22 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Request(_message.Message):
-    __slots__ = ["offload_latency", "functions", "classes", "cost", "memory", "cpu"]
-    OFFLOAD_LATENCY_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["offload_latency_cloud", "offload_latency_edge", "functions", "classes", "cost_cloud", "memory_local", "cpu_local"]
+    OFFLOAD_LATENCY_CLOUD_FIELD_NUMBER: _ClassVar[int]
+    OFFLOAD_LATENCY_EDGE_FIELD_NUMBER: _ClassVar[int]
     FUNCTIONS_FIELD_NUMBER: _ClassVar[int]
     CLASSES_FIELD_NUMBER: _ClassVar[int]
-    COST_FIELD_NUMBER: _ClassVar[int]
-    MEMORY_FIELD_NUMBER: _ClassVar[int]
-    CPU_FIELD_NUMBER: _ClassVar[int]
-    offload_latency: float
+    COST_CLOUD_FIELD_NUMBER: _ClassVar[int]
+    MEMORY_LOCAL_FIELD_NUMBER: _ClassVar[int]
+    CPU_LOCAL_FIELD_NUMBER: _ClassVar[int]
+    offload_latency_cloud: float
+    offload_latency_edge: float
     functions: _containers.RepeatedCompositeFieldContainer[Function]
     classes: _containers.RepeatedCompositeFieldContainer[QosClass]
-    cost: float
-    memory: float
-    cpu: float
-    def __init__(self, offload_latency: _Optional[float] = ..., functions: _Optional[_Iterable[_Union[Function, _Mapping]]] = ..., classes: _Optional[_Iterable[_Union[QosClass, _Mapping]]] = ..., cost: _Optional[float] = ..., memory: _Optional[float] = ..., cpu: _Optional[float] = ...) -> None: ...
+    cost_cloud: float
+    memory_local: float
+    cpu_local: float
+    def __init__(self, offload_latency_cloud: _Optional[float] = ..., offload_latency_edge: _Optional[float] = ..., functions: _Optional[_Iterable[_Union[Function, _Mapping]]] = ..., classes: _Optional[_Iterable[_Union[QosClass, _Mapping]]] = ..., cost_cloud: _Optional[float] = ..., memory_local: _Optional[float] = ..., cpu_local: _Optional[float] = ...) -> None: ...
 
 class FunctionInvocation(_message.Message):
     __slots__ = ["qos_class", "arrivals"]
@@ -72,18 +74,20 @@ class QosClass(_message.Message):
     def __init__(self, name: _Optional[str] = ..., utility: _Optional[float] = ..., max_response_time: _Optional[float] = ..., completed_percentage: _Optional[float] = ...) -> None: ...
 
 class ClassResponse(_message.Message):
-    __slots__ = ["name", "pe", "po", "pd", "share"]
+    __slots__ = ["name", "pL", "pC", "pE", "pD", "share"]
     NAME_FIELD_NUMBER: _ClassVar[int]
+    PL_FIELD_NUMBER: _ClassVar[int]
+    PC_FIELD_NUMBER: _ClassVar[int]
     PE_FIELD_NUMBER: _ClassVar[int]
-    PO_FIELD_NUMBER: _ClassVar[int]
     PD_FIELD_NUMBER: _ClassVar[int]
     SHARE_FIELD_NUMBER: _ClassVar[int]
     name: str
-    pe: float
-    po: float
-    pd: float
+    pL: float
+    pC: float
+    pE: float
+    pD: float
     share: float
-    def __init__(self, name: _Optional[str] = ..., pe: _Optional[float] = ..., po: _Optional[float] = ..., pd: _Optional[float] = ..., share: _Optional[float] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., pL: _Optional[float] = ..., pC: _Optional[float] = ..., pE: _Optional[float] = ..., pD: _Optional[float] = ..., share: _Optional[float] = ...) -> None: ...
 
 class FunctionResponse(_message.Message):
     __slots__ = ["name", "class_responses"]

@@ -20,7 +20,7 @@ Lato Server: posizionarsi all'interno della cartella src/proto ed eseguire il se
 python3 -m grpc_tools.protoc -I . --python_out=. --pyi_out=. --grpc_python_out=. *.proto
 ```
 
-Lato Client: posizionarsi all'interno della cartella client/src/proto ed eseguire il seguente comando:
+Lato Client: posizionarsi all'interno della cartella client/src ed eseguire il seguente comando:
 ```
 protoc --proto_path proto --go_out proto --go-grpc_out proto proto/*.proto
 ```

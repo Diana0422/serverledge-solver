@@ -4,16 +4,14 @@ from proto import solver_pb2_grpc, solver_pb2
 import grpc
 from concurrent import futures
 import threading
-from src.imported import properties as p, optimizer as opt
-from src.imported.infrastructure import Network, Region
-from src.imported.faas import Node
+import properties as p, optimizer as opt, infrastructure as infra
 
 WAIT_TIME_SECONDS = 120
 
 
 class NetworkMetrics:
 
-    def __init__(self, network: Network):
+    def __init__(self, network: infra.Network):
         self.network = network
         self.clock_start = time.process_time()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
 
@@ -45,13 +43,13 @@ class NetworkMetrics:
         # FIXME: capire come raccogliere i dati sulla memoria dei nodi vicini
         pass
 
-    def update_bandwidth(self, x: Node, y: Node):
+    def update_bandwidth(self, x: infra.Node, y: infra.Node):
         # FIXME: capire come raccogliere la larghezza di banda dai nodi vicini, e capire se ogni nodo li mantiene
         #  oppure se vengono recuperati dal decisore raccogliere la largezza di banda tra nodo x e nodo y (incluso il
         #  nodo cloud)
         pass
 
-    def update_rtt(self, x: Node, y: Node):
+    def update_rtt(self, x: infra.Node, y: infra.Node):
         # calcolare rtt tra nodo x e nodo y (incluso nodo cloud)
         pass
 
@@ -138,7 +136,7 @@ def publish():
     server.wait_for_termination()
 
 
-def update_membership() -> Node:
+def update_membership() -> infra.Node:
     """
     Aggiorna la membership dei nodi della rete e ritorna il nodo da cui proviene la richiesta di esecuzione
     :return: Node (local)
@@ -150,21 +148,21 @@ def update_membership() -> Node:
 
 
 
-def initializing_network() -> Network:
+def initializing_network() -> infra.Network:
     # TODO set regions, latency and bandwidth from config
-    region_cloud = Region("cloud", True)
-    region_edge1 = Region("edge1", False)
-    region_edge2 = Region("edge2", False)
+    region_cloud = infra.Region("cloud", True)
+    region_edge1 = infra.Region("edge1", False)
+    region_edge2 = infra.Region("edge2", False)
     regions = [region_cloud, region_edge1, region_edge2]
     net_latency = {}
     bandwidth_mbps = {}
 
     # Add node cloud
-    network = Network(regions=regions, network_latency=net_latency, bandwidth_mbps=bandwidth_mbps)
-    network.add_node(Node("nuvola", 1000, region=region_cloud, speedup=1), region=region_cloud)
-    network.add_node(Node("pippo", 100, region=region_edge1, speedup=1), region=region_edge1)
-    network.add_node(Node("pluto", 100, region=region_edge1, speedup=1), region=region_edge1)
-    network.add_node(Node("topolino", 100, region=region_edge2, speedup=1), region=region_edge2)
+    network = infra.Network(regions=regions, network_latency=net_latency, bandwidth_mbps=bandwidth_mbps)
+    network.add_node(infra.Node("nuvola", 1000, region=region_cloud, speedup=1), region=region_cloud)
+    network.add_node(infra.Node("pippo", 100, region=region_edge1, speedup=1), region=region_edge1)
+    network.add_node(infra.Node("pluto", 100, region=region_edge1, speedup=1), region=region_edge1)
+    network.add_node(infra.Node("topolino", 100, region=region_edge2, speedup=1), region=region_edge2)
     print(network)
     return network
 
