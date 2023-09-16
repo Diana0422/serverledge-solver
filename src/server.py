@@ -197,6 +197,9 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
         # Call metrics update
         print(request.functions)
+        total_memory = request.memory
+        cloud_cost = request.cost
+
         for function in request.functions:
             for inv in function.invocations:
                 function_name = function.name
@@ -218,8 +221,9 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
         # FIXME: mancano alcuni dati da calcolare
-        probs = opt.update_probabilities(local, cloud,
-                                         aggregated_edge_memory=0,  # fixme da calcolare
+        probs = opt.update_probabilities(local, # fixme di questo mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
+                                         cloud, # fixme di questo mi interessa solo il costo, che arriva già nella richoesta originale (Request.cost)
+                                         aggregated_edge_memory=0,  # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                          metrics=self.net_metrics,
                                          arrival_rates=self.net_metrics.arrival_rates,
                                          serv_time=self.net_metrics.service_time,
@@ -228,7 +232,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                          init_time_local=self.net_metrics.init_time,
                                          init_time_cloud=self.net_metrics.init_time_cloud,
                                          init_time_edge=self.net_metrics.init_time_edge,
-                                         offload_time_cloud=0.0, offload_time_edge=0.0,  # fixme da calcolare
+                                         offload_time_cloud=0.0, offload_time_edge=0.0,  # fixme lo facciamo arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi (la ho come input lato client)
                                          bandwidth_cloud=1, bandwidth_edge=1,  # fixme da calcolare
                                          cold_start_p_local=self.net_metrics.cold_start,
                                          cold_start_p_cloud=self.net_metrics.cold_start_cloud,
