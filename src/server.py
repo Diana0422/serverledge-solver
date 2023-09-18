@@ -5,6 +5,7 @@ import grpc
 from concurrent import futures
 import threading
 import properties as p, optimizer as opt, infrastructure as infra
+from faas import QoSClass, Function
 
 WAIT_TIME_SECONDS = 120
 
@@ -15,29 +16,32 @@ class NetworkMetrics:
         self.network = network
         self.clock_start = time.process_time()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
 
+        # general config and functions/classes info
         self.functions = {}  # mantiene il riferimento alle funzioni in arrivo (nome_funzione: Function)
         self.classes = {}  # mantiene il riferimento alle classi in arrivo (nome_classe: QoSClass)
-        self.verbosity = 1  # TODO: impostare config
+        self.verbosity = 2  # TODO: impostare config
         self.cloud_cost = 0  # TODO: impostare config
         self.budget = 100  # TODO: impostare config
         self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
 
+        # Info to be calculated server side
         self.aggregated_edge_memory = 0.0  # memoria aggregata nell'edge per f
-        self.bandwidth_cloud = 0.0
-        self.bandwidth_edge = 0.0
+        self.bandwidth_cloud = 0.0  # todo calculate
+        self.bandwidth_edge = 0.0  # todo calculate
         self.arrival_rates = {}  # rate di arrivo per (f,c)
+
+        # Info recovered from request sent by client
         self.service_time = {}  # tempo di servizio stimato per esecuzione locale per f
         self.service_time_cloud = {}  # tempo di servizio stimato per esecuzione cloud per f
         self.service_time_edge = {}  # tempo di servizio stimato per esecuzione edge per f
         self.init_time = {}  # tempo di servizio stimato per inizializzazione locale per f
         self.init_time_cloud = {}  # tempo di servizio stimato per inizializzazione cloud per f
         self.init_time_edge = {}  # tempo di servizio stimato per inizializzazione edge per f
+        self.offload_time_cloud = 0.0  # tempo di offload (rtt) dal nodo locale al cloud
+        self.offload_time_edge = 0.0  # tempo di offload (rtt) dal nodo locale al nodo edge scelto lato client
         self.cold_start = {}  # probabilità di cold start locale per (f,c)
         self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c)
         self.cold_start_edge = {}  # probabilità di cold start edge per (f,c)
-        # self.init_time_local = {f: simulation.init_time[(f,self.node)] for f in simulation.functions}
-        # self.init_time_cloud = {f: simulation.init_time[(f,self.cloud)] for f in simulation.functions}
-        # self.init_time_edge = {} # updated periodically
 
     def update_aggregated_edge_memory(self):
         # FIXME: capire come raccogliere i dati sulla memoria dei nodi vicini
@@ -49,9 +53,41 @@ class NetworkMetrics:
         #  nodo cloud)
         pass
 
-    def update_rtt(self, x: infra.Node, y: infra.Node):
-        # calcolare rtt tra nodo x e nodo y (incluso nodo cloud)
-        pass
+    def update_functions(self, function: solver_pb2.Function):
+        """
+        Writes function information in Function class instance and adds the instance to a state dictionary.
+        It performs an update if function key is already present in the state dictionary.
+        :param function: solver_pb2.Function object used to recover function information from client
+        :return: None
+        """
+        function_name = function.name
+        f = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
+        self.functions[function_name] = f
+        print(self.functions)
+
+    def update_classes(self, c: solver_pb2.QosClass):
+        """
+        Writes class information in QoSClass instance and adds the instance to a state dictionary.
+        :param c: solver_pb2.QosClass object used to recover class information from client
+        :return: None
+        """
+        class_name = c.name
+        cl = QoSClass(name=class_name, min_completion_percentage=c.completed_percentage, arrival_weight=1,
+                      max_rt=c.max_response_time)
+        self.classes[class_name] = cl
+        print(self.classes)
+
+    def update_rtt(self, is_cloud_rtt: bool, rtt: float):
+        """
+        Updates offload time metric, both cloud and edge rtt
+        :param is_cloud_rtt: boolean that specifies whether if rtt is intended to be to cloud or to another edge node
+        :param rtt: the rtt value to be set
+        :return: None
+        """
+        if is_cloud_rtt:
+            self.offload_time_cloud = rtt
+        else:
+            self.offload_time_edge = rtt
 
     def update_arrival_rates(self, f: str, c: str, arrivals):
         """
@@ -115,6 +151,7 @@ class NetworkMetrics:
 
 
 def show_metrics():
+    # TODO
     print("Sto mostrando le metriche")
 
 
@@ -141,11 +178,10 @@ def update_membership() -> infra.Node:
     Aggiorna la membership dei nodi della rete e ritorna il nodo da cui proviene la richiesta di esecuzione
     :return: Node (local)
     """
-    #TODO
+    # TODO
     # check if nodo è presente nella lista dei nodi della rete
     # se è presente allora non aggiungerlo
     # se non è presente allora aggiungilo
-
 
 
 def initializing_network() -> infra.Network:
@@ -184,24 +220,25 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         :param context: the context
         :return: the list of the predictions
         """
-        print("Received request")
+        print("Received request\n")
 
-        # Set local node and update membership
-        local = update_membership()
+        # Recover useful data from incoming request
+        print("incoming functions: ", request.functions, "\n")
+        total_memory = request.memory_local
+        cloud_cost = request.cost_cloud
+        self.net_metrics.update_rtt(True, request.offload_latency_cloud)
+        self.net_metrics.update_rtt(False, request.offload_latency_edge)
 
-        # Get a cloud node
-        # fixme: get a random cloud node
-        cloud = self.network.get_cloud_nodes()[0]
-
-        # Call metrics update
-        print(request.functions)
-        total_memory = request.memory
-        cloud_cost = request.cost
+        for c in request.classes:
+            self.net_metrics.update_classes(c)
 
         for function in request.functions:
+            self.net_metrics.update_functions(function)
+
             for inv in function.invocations:
                 function_name = function.name
                 class_name = inv.qos_class
+
                 self.net_metrics.update_service_time(function_name,
                                                      service_local=function.duration,
                                                      service_cloud=function.duration_offloaded_cloud,
@@ -219,9 +256,12 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
         # FIXME: mancano alcuni dati da calcolare
-        probs = opt.update_probabilities(local, # fixme di questo mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
-                                         cloud, # fixme di questo mi interessa solo il costo, che arriva già nella richoesta originale (Request.cost)
-                                         aggregated_edge_memory=0,  # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
+        probs = opt.update_probabilities(local_total_memory=total_memory,   # mi interessa solamente la memoria
+                                         # locale, che posso fare arrivare come informazione dal lato client
+                                         cloud_cost=cloud_cost,             # di questo mi interessa solo il costo,
+                                         # che arriva già nella richoesta originale (Request.cost)
+                                         aggregated_edge_memory=2042,
+                                         # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                          metrics=self.net_metrics,
                                          arrival_rates=self.net_metrics.arrival_rates,
                                          serv_time=self.net_metrics.service_time,
@@ -230,7 +270,10 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                          init_time_local=self.net_metrics.init_time,
                                          init_time_cloud=self.net_metrics.init_time_cloud,
                                          init_time_edge=self.net_metrics.init_time_edge,
-                                         offload_time_cloud=0.0, offload_time_edge=0.0,  # fixme lo facciamo arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi (la ho come input lato client)
+                                         offload_time_cloud=self.net_metrics.offload_time_cloud,
+                                         offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
+                                         # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
+                                         # (la ho come input lato client)
                                          bandwidth_cloud=1, bandwidth_edge=1,  # fixme da calcolare
                                          cold_start_p_local=self.net_metrics.cold_start,
                                          cold_start_p_cloud=self.net_metrics.cold_start_cloud,

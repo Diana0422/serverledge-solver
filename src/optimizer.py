@@ -8,8 +8,8 @@ warm_start = False
 BETA_COST = 0.0
 
 
-def update_probabilities(local,
-                         cloud,
+def update_probabilities(local_total_memory,
+                         cloud_cost,
                          aggregated_edge_memory,
                          metrics,
                          arrival_rates,
@@ -94,7 +94,7 @@ def update_probabilities(local,
                        (pL[f][c] * (1.0 - deadline_satisfaction_prob_local[(f, c)]) +
                         pE[f][c] * (1.0 - deadline_satisfaction_prob_edge[(f, c)]) +
                         pC[f][c] * (1.0 - deadline_satisfaction_prob_cloud[(f, c)])) for f, c in F_C]) -
-             BETA_COST * pl.lpSum([cloud.cost * arrival_rates[(f, c)] *
+             BETA_COST * pl.lpSum([cloud_cost * arrival_rates[(f, c)] *
                                    pC[f][c] * serv_time_cloud[f] * f.memory / 1024 for f, c in F_C]), "objUtilCost")
 
     # Probability
@@ -102,7 +102,7 @@ def update_probabilities(local,
         prob += (pL[f][c] + pE[f][c] + pC[f][c] + pD[f][c] == 1.0)
 
     # Memory
-    prob += (pl.lpSum([f.memory * x[f][c] for f, c in F_C]) <= local_usable_memory_coeff * local.total_memory)
+    prob += (pl.lpSum([f.memory * x[f][c] for f, c in F_C]) <= local_usable_memory_coeff * local_total_memory)
     prob += (pl.lpSum([f.memory * y[f][c] for f, c in F_C]) <= aggregated_edge_memory)
 
     # Share
@@ -122,14 +122,16 @@ def update_probabilities(local,
 
     # Max hourly budget
     if budget is not None and budget > 0.0:
-        prob += (pl.lpSum([cloud.cost * arrival_rates[(f, c)] *
+        prob += (pl.lpSum([cloud_cost * arrival_rates[(f, c)] *
                            pC[f][c] * serv_time_cloud[f] * f.memory / 1024 for f, c in F_C]) <= budget / 3600)
 
     status = solve(prob)
+    print(f"status: {status}\n")
     if status != "Optimal":
         print(f"WARNING: solution status: {status}")
         return None
 
+    print(f"objective: {prob.objective}\n")
     obj = pl.value(prob.objective)
     if obj is None:
         print(f"WARNING: objective is None")

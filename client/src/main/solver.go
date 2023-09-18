@@ -329,7 +329,7 @@ func main() {
 		initTime:         [3]float64{0.05, 0.003, 0.0},
 		memory:           2049,
 		cpu:              10,
-		probCold:         [3]float64{0.5, 0.5, 0.5},
+		probCold:         [3]float64{0.33, 0.33, 0.33},
 		invokingClasses:  classes,
 	}
 

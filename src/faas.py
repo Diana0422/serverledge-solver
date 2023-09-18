@@ -80,6 +80,8 @@ class Node:
         return hash(self.name)
 
 
+# fixme: In @dataclass object, it is required to insert as initialization parameters the first 3 field defined:
+#  should we use utility instead of arrival_weight
 @dataclass
 class QoSClass:
     name: str
