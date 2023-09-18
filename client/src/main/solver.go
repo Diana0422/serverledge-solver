@@ -335,5 +335,6 @@ func main() {
 
 	m := make(map[string]*functionInfo)
 	m["func"] = &fInfo
+	addDefaultClass()
 	solve(m)
 }

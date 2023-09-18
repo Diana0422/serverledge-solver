@@ -23,7 +23,10 @@ def update_probabilities(local_total_memory,
     VERBOSE = metrics.verbosity
     F = metrics.functions
     C = metrics.classes
+    print(f"functions: {metrics.functions}")
+    print(f"classes: {metrics.classes}")
     F_C = [(f, c) for f in F for c in C]
+    print(f"F_C: {F_C}")
 
     if VERBOSE > 1:
         print("------------------------------")
@@ -46,11 +49,13 @@ def update_probabilities(local_total_memory,
     # TODO: we are assuming exponential distribution
     # Probability of satisfying the deadline
     for f, c in F_C:
+
         p = 0.0
         if c.max_rt - init_time_local[f] > 0.0:
             p += cold_start_p_local[f] * (1.0 - math.exp(-1.0 / serv_time[f] * (c.max_rt - init_time_local[f])))
         if c.max_rt > 0.0:
             p += (1.0 - cold_start_p_local[f]) * (1.0 - math.exp(-1.0 / serv_time[f] * c.max_rt))
+        print(f"deadline_prob_local: {p}")
         deadline_satisfaction_prob_local[(f, c)] = p
 
         p = 0.0
@@ -61,6 +66,7 @@ def update_probabilities(local_total_memory,
         if c.max_rt - offload_time_cloud - tx_time > 0.0:
             p += (1.0 - cold_start_p_cloud[f]) * (
                     1.0 - math.exp(-1.0 / serv_time_cloud[f] * (c.max_rt - offload_time_cloud - tx_time)))
+        print(f"deadline_prob_cloud: {p}")
         deadline_satisfaction_prob_cloud[(f, c)] = p
 
         p = 0.0
@@ -74,6 +80,7 @@ def update_probabilities(local_total_memory,
                         1.0 - math.exp(-1.0 / serv_time_edge[f] * (c.max_rt - offload_time_edge - tx_time)))
         except:
             pass
+        print(f"deadline_prob_edge: {p}")
         deadline_satisfaction_prob_edge[(f, c)] = p
 
     if VERBOSE > 1:

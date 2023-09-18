@@ -17,8 +17,8 @@ class NetworkMetrics:
         self.clock_start = time.process_time()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
 
         # general config and functions/classes info
-        self.functions = {}  # mantiene il riferimento alle funzioni in arrivo (nome_funzione: Function)
-        self.classes = {}  # mantiene il riferimento alle classi in arrivo (nome_classe: QoSClass)
+        self.functions = []  # mantiene il riferimento alle funzioni in arrivo [Function]
+        self.classes = []  # mantiene il riferimento alle classi in arrivo [QoSClass]
         self.verbosity = 2  # TODO: impostare config
         self.cloud_cost = 0  # TODO: impostare config
         self.budget = 100  # TODO: impostare config
@@ -31,27 +31,37 @@ class NetworkMetrics:
         self.arrival_rates = {}  # rate di arrivo per (f,c)
 
         # Info recovered from request sent by client
-        self.service_time = {}  # tempo di servizio stimato per esecuzione locale per f
-        self.service_time_cloud = {}  # tempo di servizio stimato per esecuzione cloud per f
-        self.service_time_edge = {}  # tempo di servizio stimato per esecuzione edge per f
-        self.init_time = {}  # tempo di servizio stimato per inizializzazione locale per f
-        self.init_time_cloud = {}  # tempo di servizio stimato per inizializzazione cloud per f
-        self.init_time_edge = {}  # tempo di servizio stimato per inizializzazione edge per f
+        self.service_time = {}  # tempo di servizio stimato per esecuzione locale per f (Function, float)
+        self.service_time_cloud = {}  # tempo di servizio stimato per esecuzione cloud per f (Function, float)
+        self.service_time_edge = {}  # tempo di servizio stimato per esecuzione edge per f (Function, float)
+        self.init_time = {}  # tempo di servizio stimato per inizializzazione locale per f (Function, float)
+        self.init_time_cloud = {}  # tempo di servizio stimato per inizializzazione cloud per f (Function, float)
+        self.init_time_edge = {}  # tempo di servizio stimato per inizializzazione edge per f (Function, float)
         self.offload_time_cloud = 0.0  # tempo di offload (rtt) dal nodo locale al cloud
         self.offload_time_edge = 0.0  # tempo di offload (rtt) dal nodo locale al nodo edge scelto lato client
-        self.cold_start = {}  # probabilità di cold start locale per (f,c)
-        self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c)
-        self.cold_start_edge = {}  # probabilità di cold start edge per (f,c)
+        self.cold_start = {}  # probabilità di cold start locale per (f,c) (Function, QoSClass)
+        self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c) (Function, QoSClass)
+        self.cold_start_edge = {}  # probabilità di cold start edge per (f,c) (Function, QoSClass)
 
-    def update_aggregated_edge_memory(self):
-        # FIXME: capire come raccogliere i dati sulla memoria dei nodi vicini
-        pass
+    def _search_function(self, f_name: str) -> Function:
+        """
+        # Search in function array for function with given name
+        :param f_name: the func name
+        :return: Function
+        """
+        for foo in self.functions:
+            if f_name == foo.name:
+                return foo
 
-    def update_bandwidth(self, x: infra.Node, y: infra.Node):
-        # FIXME: capire come raccogliere la larghezza di banda dai nodi vicini, e capire se ogni nodo li mantiene
-        #  oppure se vengono recuperati dal decisore raccogliere la largezza di banda tra nodo x e nodo y (incluso il
-        #  nodo cloud)
-        pass
+    def _search_class(self, c_name: str) -> QoSClass:
+        """
+        # Search in class array for class with given name
+        :param c_name: class name
+        :return: QoSClass
+        """
+        for c in self.classes:
+            if c_name == c.name:
+                return c
 
     def update_functions(self, function: solver_pb2.Function):
         """
@@ -62,7 +72,8 @@ class NetworkMetrics:
         """
         function_name = function.name
         f = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
-        self.functions[function_name] = f
+        if f not in self.functions:
+            self.functions.append(f)
         print(self.functions)
 
     def update_classes(self, c: solver_pb2.QosClass):
@@ -71,10 +82,13 @@ class NetworkMetrics:
         :param c: solver_pb2.QosClass object used to recover class information from client
         :return: None
         """
+        print("In update classes")
         class_name = c.name
+        print(f"class: {class_name}")
         cl = QoSClass(name=class_name, min_completion_percentage=c.completed_percentage, arrival_weight=1,
                       max_rt=c.max_response_time)
-        self.classes[class_name] = cl
+        if cl not in self.classes:
+            self.classes.append(cl)
         print(self.classes)
 
     def update_rtt(self, is_cloud_rtt: bool, rtt: float):
@@ -89,65 +103,97 @@ class NetworkMetrics:
         else:
             self.offload_time_edge = rtt
 
-    def update_arrival_rates(self, f: str, c: str, arrivals):
-        """
-        Aggiorna i tassi di arrivo per coppie (f,c)
-        :param f: nome della funzione
-        :param c: nome della classe di appartenenza della funzione
-        :param arrivals: numero di arrivi della coppia (f,c)
-        :return: None
-        """
-        # Aggiorna il clock per l'intervallo di calcolo successivo
-        clock_stop = time.process_time()
-        t = clock_stop - self.clock_start
-        self.clock_start = clock_stop
-
-        # Calcola il tasso di arrivo sulla base della funzione e della classe che ha richiesto la valutazione
-        new_arrival_rate = arrivals / t
-        self.arrival_rates.update({(f, c): new_arrival_rate})
-
     def update_service_time(self, f: str, service_local: float, service_cloud: float, service_edge: float):
         """
-        Aggiorno il tempo di esecuzione locale, nel cloud e nell'edge sulla rete
-        :param f: nome della funzione
-        :param service_local: tempo di esecuzione locale
-        :param service_cloud: tempo di esecuzione nel cloud
-        :param service_edge: tempo di esecuzione nell'edge
+        Updates execution time whether if it's local, in cloud or in the edge network
+        :param f: function name
+        :param service_local: local execution time
+        :param service_cloud: cloud execution time
+        :param service_edge: edge execution time
         :return: None
         """
-        # I dati in input sono già forniti dal client quando arriva una richiesta di aggiornamento delle probabilità
-        self.service_time.update({f: service_local})
-        self.service_time_cloud.update({f: service_cloud})
-        self.service_time_edge.update({f: service_edge})
+        # Search function with name f in function array
+        func = self._search_function(f)
+
+        # Update values in dictionary
+        self.service_time.update({func: service_local})
+        self.service_time_cloud.update({func: service_cloud})
+        self.service_time_edge.update({func: service_edge})
 
     def update_init_time(self, f: str, init_local: float, init_cloud: float, init_edge: float):
         """
-        Aggiorna il tempo di inizializzazione locale, nel cloud e nell'edge sulla rete
-        :param f: nome della funzione
-        :param init_local: tempo di inizializzazione locale
-        :param init_cloud: tempo di inizializzazione nel cloud
-        :param init_edge: tempo di inizializzazione nell'edge
+        Updates initialization time, whether if it's local, in cloud or on the edge network
+        :param f: function name
+        :param init_local: local initialization time
+        :param init_cloud: cloud initialization time
+        :param init_edge: edge initialization time
         :return: None
         """
-        # I dati in input sono già forniti dal client quando arriva una richiesta di aggiornamento delle probabilità
-        self.init_time.update({f: init_local})
-        self.init_time_cloud.update({f: init_cloud})
-        self.init_time_edge.update({f: init_edge})
+        # Search in function array for function f
+        func = self._search_function(f)
+
+        # Update values in dictionary
+        self.init_time.update({func: init_local})
+        self.init_time_cloud.update({func: init_cloud})
+        self.init_time_edge.update({func: init_edge})
 
     def update_cold_start(self, f: str, c: str, p_cold_local: float, p_cold_cloud: float, p_cold_edge: float):
         """
-        Aggiorna la probabilità di cold start locale, nel cloud e nell'edge nella rete
-        :param f: nome della funzione
-        :param c: nome della classe
-        :param p_cold_local: probabilità di cold start locale
-        :param p_cold_cloud: probabilità di cold start nel cloud
-        :param p_cold_edge: probabilità di cold start nell'edge
-        :return:
+        Updates cold start probability values, whether if it's local, on cloud or on the edge network
+        :param f: function name
+        :param c: class name
+        :param p_cold_local: local cold start probability
+        :param p_cold_cloud: cloud cold start probability
+        :param p_cold_edge: edge cold start probability
+        :return: None
         """
-        # I dati in input sono già forniti dal client quando arriva una richiesta di aggiornamento delle probabilità
-        self.cold_start.update({(f, c): p_cold_local})
-        self.cold_start_cloud.update({(f, c): p_cold_cloud})
-        self.cold_start_edge.update({(f, c): p_cold_edge})
+        # Search in function array for function f
+        func = self._search_function(f)
+
+        # Search in classes array for function c
+        cl = self._search_class(c)
+
+        # Update values in dictionary
+        self.cold_start.update({(func, cl): p_cold_local})
+        self.cold_start_cloud.update({(func, cl): p_cold_cloud})
+        self.cold_start_edge.update({(func, cl): p_cold_edge})
+
+    def update_arrival_rates(self, f: str, c: str, arrivals):
+        """
+        Updates arrival rates for couples of instances (Function, QoSClass)
+        :param f: function name
+        :param c: class name
+        :param arrivals: number of arrivals for couples (f,c)
+        :return: None
+        """
+        # Update the clock and get the time interval
+        clock_stop = time.process_time()
+        print(f"clock start: {self.clock_start}")
+        print(f"clock stop: {clock_stop}")
+        t = clock_stop - self.clock_start
+        print(f"clock stop - clock start: {t}")
+
+        # Search in function array for function f
+        func = self._search_function(f)
+
+        # Search in class array for class c
+        cl = self._search_class(c)
+
+        # Calculate new arrivals rates
+        print(f"arrivals: {arrivals}")
+        new_arrival_rate = arrivals / t
+        print(f"arrival_rate: {new_arrival_rate}\n")
+        self.arrival_rates.update({(func, cl): new_arrival_rate})
+
+    def update_aggregated_edge_memory(self):
+        # FIXME: capire come raccogliere i dati sulla memoria dei nodi vicini
+        pass
+
+    def update_bandwidth(self, x: infra.Node, y: infra.Node):
+        # FIXME: capire come raccogliere la larghezza di banda dai nodi vicini, e capire se ogni nodo li mantiene
+        #  oppure se vengono recuperati dal decisore raccogliere la largezza di banda tra nodo x e nodo y (incluso il
+        #  nodo cloud)
+        pass
 
 
 def show_metrics():
@@ -256,11 +302,11 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
         # FIXME: mancano alcuni dati da calcolare
-        probs = opt.update_probabilities(local_total_memory=total_memory,   # mi interessa solamente la memoria
+        probs = opt.update_probabilities(local_total_memory=total_memory,  # mi interessa solamente la memoria
                                          # locale, che posso fare arrivare come informazione dal lato client
-                                         cloud_cost=cloud_cost,             # di questo mi interessa solo il costo,
+                                         cloud_cost=cloud_cost,  # di questo mi interessa solo il costo,
                                          # che arriva già nella richoesta originale (Request.cost)
-                                         aggregated_edge_memory=2042,
+                                         aggregated_edge_memory=2048,
                                          # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                          metrics=self.net_metrics,
                                          arrival_rates=self.net_metrics.arrival_rates,
@@ -274,7 +320,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                          offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
                                          # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
                                          # (la ho come input lato client)
-                                         bandwidth_cloud=1, bandwidth_edge=1,  # fixme da calcolare
+                                         bandwidth_cloud=1.0, bandwidth_edge=1.0,  # fixme da calcolare
                                          cold_start_p_local=self.net_metrics.cold_start,
                                          cold_start_p_cloud=self.net_metrics.cold_start_cloud,
                                          cold_start_p_edge=self.net_metrics.cold_start_edge,
