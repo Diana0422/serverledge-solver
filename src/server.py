@@ -1,4 +1,5 @@
 import time
+import logging
 
 from proto import solver_pb2_grpc, solver_pb2
 import grpc
@@ -8,6 +9,8 @@ import properties as p, optimizer as opt, infrastructure as infra
 from faas import QoSClass, Function
 
 WAIT_TIME_SECONDS = 120
+
+logging.basicConfig(level=logging.INFO)
 
 
 class NetworkMetrics:
@@ -245,6 +248,55 @@ def initializing_network() -> infra.Network:
     return network
 
 
+def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(Function, QoSClass), [float]]):
+    """
+    Sends the response back to the client
+    :param shares: dictionary with the shares values for couples (f,c)
+    :param probs: dictionary with the solution of the problem for couples (f,c)
+    :return: None
+    """
+    couples = probs.keys()
+    f_c_resp = {}  # {Function: [ClassResponse]}
+
+    for f, c in couples:
+        c_name = c.name
+        print(c_name)
+
+        # Get corresponding probabilities
+        values = probs.get((f, c))
+        pL = values[0]
+        pC = values[1]
+        pE = values[2]
+        pD = values[3]
+        print(f"pL: {pL}")
+        print(f"pC: {pC}")
+        print(f"pE: {pE}")
+        print(f"pD: {pD}")
+        share = shares.get((f, c))
+        print(share)
+        class_resp = solver_pb2.ClassResponse(name=c_name, pL=pL, pC=pC, pE=pE, pD=pD, share=share)
+        if f not in f_c_resp:
+            f_c_resp[f] = [class_resp]
+        else:
+            f_c_resp.get(f).append(class_resp)
+
+    f_responses = []
+    for f in f_c_resp:
+        f_name = f.name
+        print(f"function name: {f_name}")
+        c_responses = f_c_resp[f]
+        print(f"c_responses: {c_responses}")
+        func_resp = solver_pb2.FunctionResponse(name=f_name)
+        func_resp.class_responses.extend(c_responses)
+        f_responses.append(func_resp)
+
+    print(f"f_responses: {f_responses}")
+    response = solver_pb2.Response(time_taken=0.0)
+    response.f_response.extend(f_responses)
+    print(f"response: {response}")
+    return response
+
+
 # the gRPC server functions
 class Estimator(solver_pb2_grpc.SolverServicer):
 
@@ -298,34 +350,36 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
         # FIXME: mancano alcuni dati da calcolare
-        probs = opt.update_probabilities(local_total_memory=total_memory,  # mi interessa solamente la memoria
-                                         # locale, che posso fare arrivare come informazione dal lato client
-                                         cloud_cost=cloud_cost,  # di questo mi interessa solo il costo,
-                                         # che arriva già nella richoesta originale (Request.cost)
-                                         aggregated_edge_memory=2048,
-                                         # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
-                                         metrics=self.net_metrics,
-                                         arrival_rates=self.net_metrics.arrival_rates,
-                                         serv_time=self.net_metrics.service_time,
-                                         serv_time_cloud=self.net_metrics.service_time_cloud,
-                                         serv_time_edge=self.net_metrics.service_time_edge,
-                                         init_time_local=self.net_metrics.init_time,
-                                         init_time_cloud=self.net_metrics.init_time_cloud,
-                                         init_time_edge=self.net_metrics.init_time_edge,
-                                         offload_time_cloud=self.net_metrics.offload_time_cloud,
-                                         offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
-                                         # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
-                                         # (la ho come input lato client)
-                                         bandwidth_cloud=1.0, bandwidth_edge=1.0,  # fixme da calcolare
-                                         cold_start_p_local=self.net_metrics.cold_start,
-                                         cold_start_p_cloud=self.net_metrics.cold_start_cloud,
-                                         cold_start_p_edge=self.net_metrics.cold_start_edge,
-                                         budget=self.net_metrics.local_budget,
-                                         local_usable_memory_coeff=1.0  # fixme da calcolare
-                                         )
+        probs, shares = opt.update_probabilities(local_total_memory=total_memory,  # mi interessa solamente la memoria
+                                                 # locale, che posso fare arrivare come informazione dal lato client
+                                                 cloud_cost=cloud_cost,  # di questo mi interessa solo il costo,
+                                                 # che arriva già nella richoesta originale (Request.cost)
+                                                 aggregated_edge_memory=2048,
+                                                 # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
+                                                 metrics=self.net_metrics,
+                                                 arrival_rates=self.net_metrics.arrival_rates,
+                                                 serv_time=self.net_metrics.service_time,
+                                                 serv_time_cloud=self.net_metrics.service_time_cloud,
+                                                 serv_time_edge=self.net_metrics.service_time_edge,
+                                                 init_time_local=self.net_metrics.init_time,
+                                                 init_time_cloud=self.net_metrics.init_time_cloud,
+                                                 init_time_edge=self.net_metrics.init_time_edge,
+                                                 offload_time_cloud=self.net_metrics.offload_time_cloud,
+                                                 offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
+                                                 # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
+                                                 # (la ho come input lato client)
+                                                 bandwidth_cloud=1.0, bandwidth_edge=1.0,  # fixme da calcolare
+                                                 cold_start_p_local=self.net_metrics.cold_start,
+                                                 cold_start_p_cloud=self.net_metrics.cold_start_cloud,
+                                                 cold_start_p_edge=self.net_metrics.cold_start_edge,
+                                                 budget=self.net_metrics.local_budget,
+                                                 local_usable_memory_coeff=1.0  # fixme da calcolare
+                                                 )
 
-        # TODO impacchetta le probabilità aggiornate e restituisci al client
-        print("FINITOOOOOOOOOOOO!")
+        # Marshal probabilities into gRPC Response and send back to client
+        print(probs)
+        response = prepare_response(probs, shares)
+        return response
 
 
 def serve():

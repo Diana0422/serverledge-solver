@@ -148,9 +148,11 @@ def update_probabilities(local_total_memory,
         print(f"WARNING: objective is None")
         return None
 
+    shares = {(f, c): pl.value(x[f][c]) for f, c in F_C}
+
     if VERBOSE > 0:
         print("Obj = ", obj)
-        shares = {(f, c): pl.value(x[f][c]) for f, c in F_C}
+        # shares = {(f, c): pl.value(x[f][c]) for f, c in F_C} # fixme prima era qui e ora in riga 151, va bene?
         print(f"Shares: {shares}")
 
     probs = {(f, c): [pl.value(pL[f][c]),
@@ -173,7 +175,7 @@ def update_probabilities(local_total_memory,
         probs[(f, c)] = [x / s for x in probs[(f, c)]]
         if VERBOSE > 0:
             print(f"{f}-{c}: {probs[(f, c)]}")
-    return probs
+    return probs, shares
 
 
 def solve(problem):
