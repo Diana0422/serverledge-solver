@@ -64,7 +64,6 @@ def update_probabilities(local_total_memory,
             p += cold_start_p_local[f] * (1.0 - math.exp(-1.0 / serv_time[f] * (c.max_rt - init_time_local[f])))
         if c.max_rt > 0.0:
             p += (1.0 - cold_start_p_local[f]) * (1.0 - math.exp(-1.0 / serv_time[f] * c.max_rt))
-        print(f"deadline_prob_local: {p}")
         deadline_satisfaction_prob_local[(f, c)] = p
 
         p = 0.0
@@ -75,7 +74,6 @@ def update_probabilities(local_total_memory,
         if c.max_rt - offload_time_cloud - tx_time > 0.0:
             p += (1.0 - cold_start_p_cloud[f]) * (
                     1.0 - math.exp(-1.0 / serv_time_cloud[f] * (c.max_rt - offload_time_cloud - tx_time)))
-        print(f"deadline_prob_cloud: {p}")
         deadline_satisfaction_prob_cloud[(f, c)] = p
 
         p = 0.0
@@ -89,7 +87,6 @@ def update_probabilities(local_total_memory,
                         1.0 - math.exp(-1.0 / serv_time_edge[f] * (c.max_rt - offload_time_edge - tx_time)))
         except:
             pass
-        print(f"deadline_prob_edge: {p}")
         deadline_satisfaction_prob_edge[(f, c)] = p
 
     if VERBOSE > 1:
@@ -142,12 +139,10 @@ def update_probabilities(local_total_memory,
                            pC[f][c] * serv_time_cloud[f] * f.memory / 1024 for f, c in F_C]) <= budget / 3600)
 
     status = solve(prob)
-    print(f"status: {status}\n")
     if status != "Optimal":
         print(f"WARNING: solution status: {status}")
         return None
 
-    print(f"objective: {prob.objective}\n")
     obj = pl.value(prob.objective)
     if obj is None:
         print(f"WARNING: objective is None")
