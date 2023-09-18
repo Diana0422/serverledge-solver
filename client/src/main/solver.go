@@ -2,6 +2,7 @@ package main
 
 import (
 	"client/src/config"
+	"client/src/function"
 	"client/src/node"
 	pb "client/src/proto/github.com/grussorusso/serverledge"
 	"context"
@@ -312,11 +313,11 @@ func main() {
 		arrivalCount:             7,
 		share:                    0,
 		timeSlotsWithoutArrivals: 0,
-		className:                "default",
+		className:                "best-effort",
 	}
 
 	classes := make(map[string]*classFunctionInfo)
-	classes["default"] = &cInfo
+	classes["best-effort"] = &cInfo
 
 	fInfo := functionInfo{
 		name:             "func",
@@ -335,6 +336,12 @@ func main() {
 
 	m := make(map[string]*functionInfo)
 	m["func"] = &fInfo
-	addDefaultClass()
+	cl := function.QoSClass{
+		Name:                "best-effort",
+		Utility:             0.1,
+		MaximumResponseTime: 0.500,
+		CompletedPercentage: 0,
+	}
+	Classes["best-effort"] = cl
 	solve(m)
 }

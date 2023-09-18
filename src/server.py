@@ -39,9 +39,9 @@ class NetworkMetrics:
         self.init_time_edge = {}  # tempo di servizio stimato per inizializzazione edge per f (Function, float)
         self.offload_time_cloud = 0.0  # tempo di offload (rtt) dal nodo locale al cloud
         self.offload_time_edge = 0.0  # tempo di offload (rtt) dal nodo locale al nodo edge scelto lato client
-        self.cold_start = {}  # probabilità di cold start locale per (f,c) (Function, QoSClass)
-        self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c) (Function, QoSClass)
-        self.cold_start_edge = {}  # probabilità di cold start edge per (f,c) (Function, QoSClass)
+        self.cold_start = {}  # probabilità di cold start locale per f (Function, float)
+        self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c) (Function, float)
+        self.cold_start_edge = {}  # probabilità di cold start edge per (f,c) (Function, float)
 
     def _search_function(self, f_name: str) -> Function:
         """
@@ -137,11 +137,10 @@ class NetworkMetrics:
         self.init_time_cloud.update({func: init_cloud})
         self.init_time_edge.update({func: init_edge})
 
-    def update_cold_start(self, f: str, c: str, p_cold_local: float, p_cold_cloud: float, p_cold_edge: float):
+    def update_cold_start(self, f: str, p_cold_local: float, p_cold_cloud: float, p_cold_edge: float):
         """
         Updates cold start probability values, whether if it's local, on cloud or on the edge network
         :param f: function name
-        :param c: class name
         :param p_cold_local: local cold start probability
         :param p_cold_cloud: cloud cold start probability
         :param p_cold_edge: edge cold start probability
@@ -150,13 +149,10 @@ class NetworkMetrics:
         # Search in function array for function f
         func = self._search_function(f)
 
-        # Search in classes array for function c
-        cl = self._search_class(c)
-
         # Update values in dictionary
-        self.cold_start.update({(func, cl): p_cold_local})
-        self.cold_start_cloud.update({(func, cl): p_cold_cloud})
-        self.cold_start_edge.update({(func, cl): p_cold_edge})
+        self.cold_start.update({func: p_cold_local})
+        self.cold_start_cloud.update({func: p_cold_cloud})
+        self.cold_start_edge.update({func: p_cold_edge})
 
     def update_arrival_rates(self, f: str, c: str, arrivals):
         """
@@ -296,7 +292,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
                 self.net_metrics.update_arrival_rates(function_name, class_name, arrivals=inv.arrivals)
 
-                self.net_metrics.update_cold_start(function_name, class_name,
+                self.net_metrics.update_cold_start(function_name,
                                                    p_cold_local=function.pcold,
                                                    p_cold_cloud=function.pcold_offloaded_cloud,
                                                    p_cold_edge=function.pcold_offloaded_edge)
@@ -329,7 +325,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                          )
 
         # TODO impacchetta le probabilità aggiornate e restituisci al client
-        print(probs)
+        print("FINITOOOOOOOOOOOO!")
 
 
 def serve():
