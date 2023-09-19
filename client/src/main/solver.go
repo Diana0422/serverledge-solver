@@ -5,8 +5,10 @@ import (
 	"client/src/function"
 	"client/src/node"
 	pb "client/src/proto/github.com/grussorusso/serverledge"
+	"client/src/registration"
 	"context"
 	"fmt"
+	"github.com/LK4D4/trylock"
 	"google.golang.org/grpc"
 	"log"
 )
@@ -60,6 +62,17 @@ type functionInfo struct {
 
 var CloudOffloadLatency = 0.0
 var EdgeOffloadLatency = 0.0
+
+// Calculates the aggregated total memory of nearby nodes
+func calculateAggregatedMem() float32 {
+	aggrMem := float32(0)
+	nearbyServerMap := registration.Reg.NearbyServersMap
+	for key := range nearbyServerMap {
+		info := nearbyServerMap[key]
+		aggrMem += float32(info.AvailableMemMB)
+	}
+	return aggrMem
+}
 
 func solve(m map[string]*functionInfo) {
 	if len(m) == 0 {
@@ -145,6 +158,8 @@ func solve(m map[string]*functionInfo) {
 		}
 	}
 
+	aggregatedEdgeMemory := calculateAggregatedMem()
+	// log.Println("aggregatedEdgeMemory: ", aggregatedEdgeMemory)
 	offloadLatencyCloud := float32(CloudOffloadLatency)
 	offloadLatencyEdge := float32(EdgeOffloadLatency)
 	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
@@ -156,8 +171,9 @@ func solve(m map[string]*functionInfo) {
 		Functions:           functionList,
 		Classes:             classList,
 		CostCloud:           &costCloud,
-		CpuLocal:            &localCpu,
 		MemoryLocal:         &localMem,
+		CpuLocal:            &localCpu,
+		MemoryAggregate:     &aggregatedEdgeMemory,
 	})
 
 	if err != nil {
@@ -307,6 +323,25 @@ func solve(m map[string]*functionInfo) {
 }*/
 
 func main() {
+	// dummy registration
+	registration.Reg = &registration.Registry{
+		Area:             "",
+		Key:              "",
+		Client:           nil,
+		RwMtx:            trylock.Mutex{},
+		NearbyServersMap: make(map[string]*registration.StatusInformation),
+		CloudServersMap:  nil,
+	}
+	infoNode1 := registration.StatusInformation{
+		AvailableMemMB: 2048,
+	}
+
+	infoNode2 := registration.StatusInformation{
+		AvailableMemMB: 2048,
+	}
+	registration.Reg.NearbyServersMap["node1"] = &infoNode1
+	registration.Reg.NearbyServersMap["node2"] = &infoNode2
+
 	fmt.Println("Let's go requesting!")
 	cInfo := classFunctionInfo{
 		functionInfo:             nil,

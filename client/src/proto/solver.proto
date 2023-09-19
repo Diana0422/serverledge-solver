@@ -19,6 +19,7 @@ message Request {
   required float cost_cloud = 5;              // cost of the request if executed on cloud
   required float memory_local = 10;           // memory available on local node
   required float cpu_local = 11;              // cpu available on local node
+  required float memory_aggregate = 12;       // total memory available on all edge nodes
 }
 
 message FunctionInvocation {

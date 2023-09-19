@@ -27,8 +27,7 @@ class NetworkMetrics:
         self.budget = 100  # TODO: impostare config
         self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
 
-        # Info to be calculated server side
-        self.aggregated_edge_memory = 0.0  # memoria aggregata nell'edge per f
+        # TODO Info to be calculated
         self.bandwidth_cloud = 0.0  # todo calculate
         self.bandwidth_edge = 0.0  # todo calculate
         self.arrival_rates = {}  # rate di arrivo per (f,c)
@@ -184,10 +183,6 @@ class NetworkMetrics:
         print(f"arrival_rate: {new_arrival_rate}\n")
         self.arrival_rates.update({(func, cl): new_arrival_rate})
 
-    def update_aggregated_edge_memory(self):
-        # FIXME: capire come raccogliere i dati sulla memoria dei nodi vicini
-        pass
-
     def update_bandwidth(self, x: infra.Node, y: infra.Node):
         # FIXME: capire come raccogliere la larghezza di banda dai nodi vicini, e capire se ogni nodo li mantiene
         #  oppure se vengono recuperati dal decisore raccogliere la largezza di banda tra nodo x e nodo y (incluso il
@@ -320,6 +315,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         print("incoming functions: ", request.functions, "\n")
         total_memory = request.memory_local
         cloud_cost = request.cost_cloud
+        aggregated_memory = request.memory_aggregate
         self.net_metrics.update_rtt(True, request.offload_latency_cloud)
         self.net_metrics.update_rtt(False, request.offload_latency_edge)
 
@@ -350,12 +346,12 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
         # FIXME: mancano alcuni dati da calcolare
-        probs, shares = opt.update_probabilities(local_total_memory=total_memory,  # mi interessa solamente la memoria
-                                                 # locale, che posso fare arrivare come informazione dal lato client
-                                                 cloud_cost=cloud_cost,  # di questo mi interessa solo il costo,
-                                                 # che arriva già nella richoesta originale (Request.cost)
-                                                 aggregated_edge_memory=2048,
-                                                 # fixme lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
+        probs, shares = opt.update_probabilities(local_total_memory=total_memory,
+                                                 # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
+                                                 cloud_cost=cloud_cost,
+                                                 # di questo mi interessa solo il costo, che arriva già nella richoesta originale (Request.cost)
+                                                 aggregated_edge_memory=aggregated_memory,
+                                                 # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                                  metrics=self.net_metrics,
                                                  arrival_rates=self.net_metrics.arrival_rates,
                                                  serv_time=self.net_metrics.service_time,

@@ -6,7 +6,7 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Request(_message.Message):
-    __slots__ = ["offload_latency_cloud", "offload_latency_edge", "functions", "classes", "cost_cloud", "memory_local", "cpu_local"]
+    __slots__ = ["offload_latency_cloud", "offload_latency_edge", "functions", "classes", "cost_cloud", "memory_local", "cpu_local", "memory_aggregate"]
     OFFLOAD_LATENCY_CLOUD_FIELD_NUMBER: _ClassVar[int]
     OFFLOAD_LATENCY_EDGE_FIELD_NUMBER: _ClassVar[int]
     FUNCTIONS_FIELD_NUMBER: _ClassVar[int]
@@ -14,6 +14,7 @@ class Request(_message.Message):
     COST_CLOUD_FIELD_NUMBER: _ClassVar[int]
     MEMORY_LOCAL_FIELD_NUMBER: _ClassVar[int]
     CPU_LOCAL_FIELD_NUMBER: _ClassVar[int]
+    MEMORY_AGGREGATE_FIELD_NUMBER: _ClassVar[int]
     offload_latency_cloud: float
     offload_latency_edge: float
     functions: _containers.RepeatedCompositeFieldContainer[Function]
@@ -21,7 +22,8 @@ class Request(_message.Message):
     cost_cloud: float
     memory_local: float
     cpu_local: float
-    def __init__(self, offload_latency_cloud: _Optional[float] = ..., offload_latency_edge: _Optional[float] = ..., functions: _Optional[_Iterable[_Union[Function, _Mapping]]] = ..., classes: _Optional[_Iterable[_Union[QosClass, _Mapping]]] = ..., cost_cloud: _Optional[float] = ..., memory_local: _Optional[float] = ..., cpu_local: _Optional[float] = ...) -> None: ...
+    memory_aggregate: float
+    def __init__(self, offload_latency_cloud: _Optional[float] = ..., offload_latency_edge: _Optional[float] = ..., functions: _Optional[_Iterable[_Union[Function, _Mapping]]] = ..., classes: _Optional[_Iterable[_Union[QosClass, _Mapping]]] = ..., cost_cloud: _Optional[float] = ..., memory_local: _Optional[float] = ..., cpu_local: _Optional[float] = ..., memory_aggregate: _Optional[float] = ...) -> None: ...
 
 class FunctionInvocation(_message.Message):
     __slots__ = ["qos_class", "arrivals"]
