@@ -349,7 +349,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         probs, shares = opt.update_probabilities(local_total_memory=total_memory,
                                                  # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
                                                  cloud_cost=cloud_cost,
-                                                 # di questo mi interessa solo il costo, che arriva già nella richoesta originale (Request.cost)
+                                                 # di questo mi interessa solo il costo, che arriva già nella richiesta originale (Request.cost)
                                                  aggregated_edge_memory=aggregated_memory,
                                                  # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                                  metrics=self.net_metrics,
