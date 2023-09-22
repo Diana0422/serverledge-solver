@@ -13,6 +13,23 @@ WAIT_TIME_SECONDS = 120
 logging.basicConfig(level=logging.INFO)
 
 
+def _insert_if_not_present(ls: list, key: str, o) -> bool:
+    """
+    Inserts an object into a list, checking its presence by a key value provided ad input
+    :param ls: list
+    :param key: key value
+    :param o: object to insert
+    :return: bool: True if the element is already present, False otherwise
+    """
+    for elem in ls:
+        if key == elem.name:
+            i = ls.index(elem)
+            ls.pop(i)
+            ls.insert(i, o)
+            return True
+    return False
+
+
 class NetworkMetrics:
 
     def __init__(self, network: infra.Network):
@@ -28,13 +45,13 @@ class NetworkMetrics:
         self.cloud_cost = 0  # TODO: impostare config
         self.budget = 100  # TODO: impostare config
         self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
-        self.arrival_rate_alpha = 1.0 # TODO: impostare config
+        self.arrival_rate_alpha = 1.0  # TODO: impostare config
 
         # TODO Info to be calculated
         self.bandwidth_cloud = 0.0  # fixme config
         self.bandwidth_edge = 0.0  # fixme config
         self.arrivals = {}  # arrivi per (f,c)
-        self.prev_arrivals = {} # arrivi per (f,c) nel precedente intervallo temporale
+        self.prev_arrivals = {}  # arrivi per (f,c) nel precedente intervallo temporale
         self.arrival_rates = {}  # rate di arrivo per (f,c)
 
         # Info recovered from request sent by client
@@ -73,7 +90,6 @@ class NetworkMetrics:
             if c_name == c.name:
                 return c
 
-
     def update_time(self):
         """
         Updates the process time of the new updates (useful to calculates rates)
@@ -81,7 +97,6 @@ class NetworkMetrics:
         """
         self.last_update_time = self.time
         self.time = time.process_time()
-
 
     def update_functions(self, function: solver_pb2.Function):
         """
@@ -91,11 +106,9 @@ class NetworkMetrics:
         :return: None
         """
         function_name = function.name
-        f = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
-        for f in self.functions:
-            if function_name == f.name:
-                return
-        self.functions.append(f)
+        func = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
+        if not _insert_if_not_present(ls=self.functions, key=function_name, o=func):
+            self.functions.append(func)
         print(self.functions)
 
     def update_classes(self, c: solver_pb2.QosClass):
@@ -104,13 +117,16 @@ class NetworkMetrics:
         :param c: solver_pb2.QosClass object used to recover class information from client
         :return: None
         """
-        print("In update classes")
         class_name = c.name
-        print(f"class: {class_name}")
-        cl = QoSClass(name=class_name, min_completion_percentage=c.completed_percentage, arrival_weight=1,
-                      max_rt=c.max_response_time)
-        if cl not in self.classes:
-            self.classes.append(cl)
+        qos_class = QoSClass(name=class_name, min_completion_percentage=c.completed_percentage, arrival_weight=1,
+                             max_rt=c.max_response_time)
+
+        if qos_class.max_rt < 0:
+            # No constraint on maximum response time for the class
+            qos_class.max_rt = float("inf")  # set unlimited constraint
+
+        if not _insert_if_not_present(ls=self.classes, key=class_name, o=qos_class):
+            self.classes.append(qos_class)
         print(self.classes)
 
     def update_rtt(self, is_cloud_rtt: bool, rtt: float):
@@ -301,21 +317,23 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
 
         # Get corresponding probabilities
         values = probs.get((f, c))
-        pL = values[0]
-        pC = values[1]
-        pE = values[2]
-        pD = values[3]
-        print(f"pL: {pL}")
-        print(f"pC: {pC}")
-        print(f"pE: {pE}")
-        print(f"pD: {pD}")
-        share = shares.get((f, c))
-        print(share)
-        class_resp = solver_pb2.ClassResponse(name=c_name, pL=pL, pC=pC, pE=pE, pD=pD, share=share)
-        if f not in f_c_resp:
-            f_c_resp[f] = [class_resp]
+        if len(values) != 0:
+            pL = values[0]
+            pC = values[1]
+            pE = values[2]
+            pD = values[3]
+            print(f"pL: {pL}")
+            print(f"pC: {pC}")
+            print(f"pE: {pE}")
+            print(f"pD: {pD}")
+            share = shares.get((f, c))
+            class_resp = solver_pb2.ClassResponse(name=c_name, pL=pL, pC=pC, pE=pE, pD=pD, share=share)
+            if f not in f_c_resp:
+                f_c_resp[f] = [class_resp]
+            else:
+                f_c_resp.get(f).append(class_resp)
         else:
-            f_c_resp.get(f).append(class_resp)
+            f_c_resp[f] = []
 
     f_responses = []
     for f in f_c_resp:
@@ -362,6 +380,8 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         self.net_metrics.update_rtt(True, request.offload_latency_cloud)
         self.net_metrics.update_rtt(False, request.offload_latency_edge)
 
+        total_new_arrivals = 0
+
         for c in request.classes:
             self.net_metrics.update_classes(c)
 
@@ -372,58 +392,64 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                 function_name = function.name
                 class_name = inv.qos_class
 
-                self.net_metrics.update_service_time(function_name,
-                                                     service_local=function.duration,
-                                                     service_cloud=function.duration_offloaded_cloud,
-                                                     service_edge=function.duration_offloaded_edge)
-                self.net_metrics.update_init_time(function_name,
-                                                  init_local=function.init_time,
-                                                  init_cloud=function.init_time_offloaded_cloud,
-                                                  init_edge=function.init_time_offloaded_edge)
+                new_arrivals = inv.arrivals
+                total_new_arrivals += new_arrivals
+                if new_arrivals != 0:
+                    self.net_metrics.update_service_time(function_name,
+                                                         service_local=function.duration,
+                                                         service_cloud=function.duration_offloaded_cloud,
+                                                         service_edge=function.duration_offloaded_edge)
+                    self.net_metrics.update_init_time(function_name,
+                                                      init_local=function.init_time,
+                                                      init_cloud=function.init_time_offloaded_cloud,
+                                                      init_edge=function.init_time_offloaded_edge)
 
-                self.net_metrics.update_arrival_rates(function_name, class_name, arrivals=inv.arrivals)
+                    self.net_metrics.update_arrival_rates(function_name, class_name, arrivals=inv.arrivals)
 
-                self.net_metrics.update_cold_start(function_name,
-                                                   p_cold_local=function.pcold,
-                                                   p_cold_cloud=function.pcold_offloaded_cloud,
-                                                   p_cold_edge=function.pcold_offloaded_edge)
+                    self.net_metrics.update_cold_start(function_name,
+                                                       p_cold_local=function.pcold,
+                                                       p_cold_cloud=function.pcold_offloaded_cloud,
+                                                       p_cold_edge=function.pcold_offloaded_edge)
 
-                self.net_metrics.update_bandwidth(bw_cloud=function.bandwidth_cloud, bw_edge=function.bandwidth_edge)
+                    self.net_metrics.update_bandwidth(bw_cloud=function.bandwidth_cloud,
+                                                      bw_edge=function.bandwidth_edge)
 
-        probs, shares = opt.update_probabilities(local_total_memory=total_memory,
-                                                 # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
-                                                 cloud_cost=cloud_cost,
-                                                 # di questo mi interessa solo il costo, che arriva già nella richiesta originale (Request.cost)
-                                                 aggregated_edge_memory=aggregated_memory,
-                                                 # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
-                                                 metrics=self.net_metrics,
-                                                 arrival_rates=self.net_metrics.arrival_rates,
-                                                 # fixme considera solo intervalli
-                                                 serv_time=self.net_metrics.service_time,
-                                                 serv_time_cloud=self.net_metrics.service_time_cloud,
-                                                 serv_time_edge=self.net_metrics.service_time_edge,
-                                                 init_time_local=self.net_metrics.init_time,
-                                                 init_time_cloud=self.net_metrics.init_time_cloud,
-                                                 init_time_edge=self.net_metrics.init_time_edge,
-                                                 offload_time_cloud=self.net_metrics.offload_time_cloud,
-                                                 offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
-                                                 # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
-                                                 # (la ho come input lato client)
-                                                 bandwidth_cloud=self.net_metrics.bandwidth_cloud,  # fixme config
-                                                 bandwidth_edge=self.net_metrics.bandwidth_edge,  # fixme config
-                                                 # viene calcolato lato client e semplicemente recuperiamo il valore dal messaggio
-                                                 cold_start_p_local=self.net_metrics.cold_start,
-                                                 cold_start_p_cloud=self.net_metrics.cold_start_cloud,
-                                                 cold_start_p_edge=self.net_metrics.cold_start_edge,
-                                                 budget=self.net_metrics.local_budget,  # fixme config
-                                                 local_usable_memory_coeff=1.0
-                                                 # fixme vedi come fatto nel simulatore aggiungendo fattore di loss + aggiungere contatori per eseguiti locale e bloccati + ogni volta azzerati
-                                                 )
-
+        if total_new_arrivals != 0:
+            probs, shares = opt.update_probabilities(local_total_memory=total_memory,
+                                                     # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
+                                                     cloud_cost=cloud_cost,
+                                                     # di questo mi interessa solo il costo, che arriva già nella richiesta originale (Request.cost)
+                                                     aggregated_edge_memory=aggregated_memory,
+                                                     # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
+                                                     metrics=self.net_metrics,
+                                                     arrival_rates=self.net_metrics.arrival_rates,
+                                                     # fixme considera solo intervalli
+                                                     serv_time=self.net_metrics.service_time,
+                                                     serv_time_cloud=self.net_metrics.service_time_cloud,
+                                                     serv_time_edge=self.net_metrics.service_time_edge,
+                                                     init_time_local=self.net_metrics.init_time,
+                                                     init_time_cloud=self.net_metrics.init_time_cloud,
+                                                     init_time_edge=self.net_metrics.init_time_edge,
+                                                     offload_time_cloud=self.net_metrics.offload_time_cloud,
+                                                     offload_time_edge=self.net_metrics.offload_time_edge,
+                                                     # lo facciamo
+                                                     # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
+                                                     # (la ho come input lato client)
+                                                     bandwidth_cloud=self.net_metrics.bandwidth_cloud,  # fixme config
+                                                     bandwidth_edge=self.net_metrics.bandwidth_edge,  # fixme config
+                                                     # viene calcolato lato client e semplicemente recuperiamo il valore dal messaggio
+                                                     cold_start_p_local=self.net_metrics.cold_start,
+                                                     cold_start_p_cloud=self.net_metrics.cold_start_cloud,
+                                                     cold_start_p_edge=self.net_metrics.cold_start_edge,
+                                                     budget=self.net_metrics.local_budget,  # fixme config
+                                                     local_usable_memory_coeff=1.0
+                                                     # fixme vedi come fatto nel simulatore aggiungendo fattore di loss + aggiungere contatori per eseguiti locale e bloccati + ogni volta azzerati
+                                                     )
+        else:
+            probs = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
+            shares = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
         # Marshal probabilities into gRPC Response and send back to client
         print(probs)
-        if probs is None:
-            probs = self.net_metrics.probs
         response = prepare_response(probs, shares)
         return response
 

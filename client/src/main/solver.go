@@ -386,11 +386,11 @@ func main() {
 	fmt.Println("Let's go requesting!")
 	cInfo := classFunctionInfo{
 		functionInfo:             nil,
-		probExecuteLocal:         0.25,
-		probOffloadCloud:         0.25,
-		probOffloadEdge:          0.25,
-		probDrop:                 0.25,
-		arrivals:                 1,
+		probExecuteLocal:         0.3,
+		probOffloadCloud:         0.3,
+		probOffloadEdge:          0.3,
+		probDrop:                 0.1,
+		arrivals:                 0.09090909,
 		arrivalCount:             0,
 		share:                    0,
 		timeSlotsWithoutArrivals: 0,
@@ -403,15 +403,12 @@ func main() {
 	fInfo := functionInfo{
 		name:             "func",
 		count:            [3]int64{1, 0, 0},
-		meanDuration:     [3]float64{0.0045800372, 0.0, 0.0},
+		meanDuration:     [3]float64{0.0, 0.0, 0.0045800372},
 		varianceDuration: [3]float64{0.0, 0.0, 0.0},
-		coldStartCount:   [3]int64{1, 0, 0},
-		timeSlotCount:    [3]int64{1, 1, 1},
-		missed:           0,
-		initTime:         [3]float64{0.746175706, 0.0, 0.0},
+		initTime:         [3]float64{0.0, 0.0, 0.77583396},
 		memory:           600,
 		cpu:              0,
-		probCold:         [3]float64{1.0, 0.0, 0.0},
+		probCold:         [3]float64{0.0, 0.0, 1.0},
 		invokingClasses:  classes,
 	}
 
@@ -419,10 +416,13 @@ func main() {
 	m["func"] = &fInfo
 	cl := function.QoSClass{
 		Name:                "default",
-		Utility:             0.1,
-		MaximumResponseTime: 0.500,
+		Utility:             1,
+		MaximumResponseTime: -1,
 		CompletedPercentage: 0,
 	}
 	Classes["default"] = cl
+
+	CloudOffloadLatency = 0.0
+	EdgeOffloadLatency = 0.0011971339999999886
 	solve(m)
 }
