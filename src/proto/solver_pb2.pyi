@@ -34,7 +34,7 @@ class FunctionInvocation(_message.Message):
     def __init__(self, qos_class: _Optional[str] = ..., arrivals: _Optional[float] = ...) -> None: ...
 
 class Function(_message.Message):
-    __slots__ = ["name", "memory", "cpu", "invocations", "duration", "duration_offloaded_cloud", "duration_offloaded_edge", "init_time", "init_time_offloaded_cloud", "init_time_offloaded_edge", "pcold", "pcold_offloaded_cloud", "pcold_offloaded_edge"]
+    __slots__ = ["name", "memory", "cpu", "invocations", "duration", "duration_offloaded_cloud", "duration_offloaded_edge", "init_time", "init_time_offloaded_cloud", "init_time_offloaded_edge", "pcold", "pcold_offloaded_cloud", "pcold_offloaded_edge", "bandwidth_cloud", "bandwidth_edge"]
     NAME_FIELD_NUMBER: _ClassVar[int]
     MEMORY_FIELD_NUMBER: _ClassVar[int]
     CPU_FIELD_NUMBER: _ClassVar[int]
@@ -48,6 +48,8 @@ class Function(_message.Message):
     PCOLD_FIELD_NUMBER: _ClassVar[int]
     PCOLD_OFFLOADED_CLOUD_FIELD_NUMBER: _ClassVar[int]
     PCOLD_OFFLOADED_EDGE_FIELD_NUMBER: _ClassVar[int]
+    BANDWIDTH_CLOUD_FIELD_NUMBER: _ClassVar[int]
+    BANDWIDTH_EDGE_FIELD_NUMBER: _ClassVar[int]
     name: str
     memory: int
     cpu: float
@@ -61,7 +63,9 @@ class Function(_message.Message):
     pcold: float
     pcold_offloaded_cloud: float
     pcold_offloaded_edge: float
-    def __init__(self, name: _Optional[str] = ..., memory: _Optional[int] = ..., cpu: _Optional[float] = ..., invocations: _Optional[_Iterable[_Union[FunctionInvocation, _Mapping]]] = ..., duration: _Optional[float] = ..., duration_offloaded_cloud: _Optional[float] = ..., duration_offloaded_edge: _Optional[float] = ..., init_time: _Optional[float] = ..., init_time_offloaded_cloud: _Optional[float] = ..., init_time_offloaded_edge: _Optional[float] = ..., pcold: _Optional[float] = ..., pcold_offloaded_cloud: _Optional[float] = ..., pcold_offloaded_edge: _Optional[float] = ...) -> None: ...
+    bandwidth_cloud: float
+    bandwidth_edge: float
+    def __init__(self, name: _Optional[str] = ..., memory: _Optional[int] = ..., cpu: _Optional[float] = ..., invocations: _Optional[_Iterable[_Union[FunctionInvocation, _Mapping]]] = ..., duration: _Optional[float] = ..., duration_offloaded_cloud: _Optional[float] = ..., duration_offloaded_edge: _Optional[float] = ..., init_time: _Optional[float] = ..., init_time_offloaded_cloud: _Optional[float] = ..., init_time_offloaded_edge: _Optional[float] = ..., pcold: _Optional[float] = ..., pcold_offloaded_cloud: _Optional[float] = ..., pcold_offloaded_edge: _Optional[float] = ..., bandwidth_cloud: _Optional[float] = ..., bandwidth_edge: _Optional[float] = ...) -> None: ...
 
 class QosClass(_message.Message):
     __slots__ = ["name", "utility", "max_response_time", "completed_percentage"]

@@ -219,7 +219,6 @@ func calculateAggregatedMem() float32 {
 
 }*/
 
-// todo modifica in modo che recupero la funzione per il calcolo della dimensione del pacchetto
 func solve(m map[string]*functionInfo) {
 	if len(m) == 0 {
 		return

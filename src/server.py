@@ -28,8 +28,8 @@ class NetworkMetrics:
         self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
 
         # TODO Info to be calculated
-        self.bandwidth_cloud = 0.0  # todo calculate
-        self.bandwidth_edge = 0.0  # todo calculate
+        self.bandwidth_cloud = 0.0  # fixme in realtà ho un valore diverso per ogni funzione?
+        self.bandwidth_edge = 0.0  # fixme in realtà ho un valore diverso per ogni funzione?
         self.arrival_rates = {}  # rate di arrivo per (f,c)
 
         # Info recovered from request sent by client
@@ -74,8 +74,10 @@ class NetworkMetrics:
         """
         function_name = function.name
         f = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
-        if f not in self.functions:
-            self.functions.append(f)
+        for f in self.functions:
+            if function_name == f.name:
+                return
+        self.functions.append(f)
         print(self.functions)
 
     def update_classes(self, c: solver_pb2.QosClass):
@@ -183,11 +185,22 @@ class NetworkMetrics:
         print(f"arrival_rate: {new_arrival_rate}\n")
         self.arrival_rates.update({(func, cl): new_arrival_rate})
 
-    def update_bandwidth(self, x: infra.Node, y: infra.Node):
-        # FIXME: capire come raccogliere la larghezza di banda dai nodi vicini, e capire se ogni nodo li mantiene
-        #  oppure se vengono recuperati dal decisore raccogliere la largezza di banda tra nodo x e nodo y (incluso il
-        #  nodo cloud)
-        pass
+    def update_bandwidth(self, bw_cloud: float, bw_edge: float):
+        """
+        Updates bandwidth values, whether if it's on cloud or edge
+        :param bw_cloud: bandwidth of the link to the cloud
+        :param bw_edge: bandwidth of the link to the edge
+        :return: None
+        """
+        # Check rtt, if it's zero then it means that local execution happened
+        if self.offload_time_edge == 0:
+            self.bandwidth_edge = float("inf")
+        else:
+            self.bandwidth_edge = bw_edge
+        if self.offload_time_cloud == 0:
+            self.bandwidth_cloud = float("inf")
+        else:
+            self.bandwidth_cloud = bw_cloud
 
 
 def show_metrics():
@@ -345,7 +358,8 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                    p_cold_cloud=function.pcold_offloaded_cloud,
                                                    p_cold_edge=function.pcold_offloaded_edge)
 
-        # FIXME: mancano alcuni dati da calcolare
+                self.net_metrics.update_bandwidth(bw_cloud=function.bandwidth_cloud, bw_edge=function.bandwidth_edge)
+
         probs, shares = opt.update_probabilities(local_total_memory=total_memory,
                                                  # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
                                                  cloud_cost=cloud_cost,
@@ -353,7 +367,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                  aggregated_edge_memory=aggregated_memory,
                                                  # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                                  metrics=self.net_metrics,
-                                                 arrival_rates=self.net_metrics.arrival_rates,
+                                                 arrival_rates=self.net_metrics.arrival_rates, # fixme considera solo intervalli
                                                  serv_time=self.net_metrics.service_time,
                                                  serv_time_cloud=self.net_metrics.service_time_cloud,
                                                  serv_time_edge=self.net_metrics.service_time_edge,
@@ -364,12 +378,14 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                  offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
                                                  # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
                                                  # (la ho come input lato client)
-                                                 bandwidth_cloud=1.0, bandwidth_edge=1.0,  # fixme da calcolare
+                                                 bandwidth_cloud=self.net_metrics.bandwidth_cloud, # fixme config
+                                                 bandwidth_edge=self.net_metrics.bandwidth_edge, # fixme config
+                                                 # viene calcolato lato client e semplicemente recuperiamo il valore dal messaggio
                                                  cold_start_p_local=self.net_metrics.cold_start,
                                                  cold_start_p_cloud=self.net_metrics.cold_start_cloud,
                                                  cold_start_p_edge=self.net_metrics.cold_start_edge,
-                                                 budget=self.net_metrics.local_budget,
-                                                 local_usable_memory_coeff=1.0  # fixme da calcolare
+                                                 budget=self.net_metrics.local_budget, #fixme config
+                                                 local_usable_memory_coeff=1.0  # fixme vedi come fatto nel simulatore aggiungendo fattore di loss + aggiungere contatori per eseguiti locale e bloccati + ogni volta azzerati
                                                  )
 
         # Marshal probabilities into gRPC Response and send back to client
