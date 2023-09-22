@@ -390,39 +390,39 @@ func main() {
 		probOffloadCloud:         0.25,
 		probOffloadEdge:          0.25,
 		probDrop:                 0.25,
-		arrivals:                 12,
-		arrivalCount:             34,
+		arrivals:                 1,
+		arrivalCount:             0,
 		share:                    0,
 		timeSlotsWithoutArrivals: 0,
-		className:                "best-effort",
+		className:                "default",
 	}
 
 	classes := make(map[string]*classFunctionInfo)
-	classes["best-effort"] = &cInfo
+	classes["default"] = &cInfo
 
 	fInfo := functionInfo{
 		name:             "func",
-		count:            [3]int64{4, 3, 1},
-		meanDuration:     [3]float64{0.9, 2.2, 1.0},
+		count:            [3]int64{1, 0, 0},
+		meanDuration:     [3]float64{0.0045800372, 0.0, 0.0},
 		varianceDuration: [3]float64{0.0, 0.0, 0.0},
-		coldStartCount:   [3]int64{2, 1, 0},
+		coldStartCount:   [3]int64{1, 0, 0},
 		timeSlotCount:    [3]int64{1, 1, 1},
 		missed:           0,
-		initTime:         [3]float64{0.05, 0.003, 0.0},
-		memory:           100,
-		cpu:              10,
-		probCold:         [3]float64{0.33, 0.33, 0.33},
+		initTime:         [3]float64{0.746175706, 0.0, 0.0},
+		memory:           600,
+		cpu:              0,
+		probCold:         [3]float64{1.0, 0.0, 0.0},
 		invokingClasses:  classes,
 	}
 
 	m := make(map[string]*functionInfo)
 	m["func"] = &fInfo
 	cl := function.QoSClass{
-		Name:                "best-effort",
+		Name:                "default",
 		Utility:             0.1,
 		MaximumResponseTime: 0.500,
 		CompletedPercentage: 0,
 	}
-	Classes["best-effort"] = cl
+	Classes["default"] = cl
 	solve(m)
 }

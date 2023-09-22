@@ -18,6 +18,8 @@ class NetworkMetrics:
     def __init__(self, network: infra.Network):
         self.network = network
         self.clock_start = time.process_time()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
+        self.time = 0
+        self.last_update_time = 0
 
         # general config and functions/classes info
         self.functions = []  # mantiene il riferimento alle funzioni in arrivo [Function]
@@ -26,10 +28,13 @@ class NetworkMetrics:
         self.cloud_cost = 0  # TODO: impostare config
         self.budget = 100  # TODO: impostare config
         self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
+        self.arrival_rate_alpha = 1.0 # TODO: impostare config
 
         # TODO Info to be calculated
-        self.bandwidth_cloud = 0.0  # fixme in realtà ho un valore diverso per ogni funzione?
-        self.bandwidth_edge = 0.0  # fixme in realtà ho un valore diverso per ogni funzione?
+        self.bandwidth_cloud = 0.0  # fixme config
+        self.bandwidth_edge = 0.0  # fixme config
+        self.arrivals = {}  # arrivi per (f,c)
+        self.prev_arrivals = {} # arrivi per (f,c) nel precedente intervallo temporale
         self.arrival_rates = {}  # rate di arrivo per (f,c)
 
         # Info recovered from request sent by client
@@ -44,6 +49,9 @@ class NetworkMetrics:
         self.cold_start = {}  # probabilità di cold start locale per f (Function, float)
         self.cold_start_cloud = {}  # probabilità di cold start cloud per (f,c) (Function, float)
         self.cold_start_edge = {}  # probabilità di cold start edge per (f,c) (Function, float)
+
+        # result
+        self.probs = {(f, c): [0.3, 0.3, 0.3, 0.1] for f in self.functions for c in self.classes}
 
     def _search_function(self, f_name: str) -> Function:
         """
@@ -64,6 +72,16 @@ class NetworkMetrics:
         for c in self.classes:
             if c_name == c.name:
                 return c
+
+
+    def update_time(self):
+        """
+        Updates the process time of the new updates (useful to calculates rates)
+        :return:
+        """
+        self.last_update_time = self.time
+        self.time = time.process_time()
+
 
     def update_functions(self, function: solver_pb2.Function):
         """
@@ -119,10 +137,20 @@ class NetworkMetrics:
         # Search function with name f in function array
         func = self._search_function(f)
 
-        # Update values in dictionary
-        self.service_time.update({func: service_local})
-        self.service_time_cloud.update({func: service_cloud})
-        self.service_time_edge.update({func: service_edge})
+        # Update values in dictionary If the value of the estimated service time is zero, it means that there are not
+        # completion locally, on cloud or on edge nodes
+        if service_local > 0:
+            self.service_time.update({func: service_local})
+        else:
+            self.service_time.update({func: 0.1})  # set a value != 0 but still very small
+        if service_cloud > 0:
+            self.service_time_cloud.update({func: service_cloud})
+        else:
+            self.service_time_cloud.update({func: 0.1})
+        if service_edge > 0:
+            self.service_time_edge.update({func: service_edge})
+        else:
+            self.service_time_edge.update({func: 0.1})
 
     def update_init_time(self, f: str, init_local: float, init_cloud: float, init_edge: float):
         """
@@ -158,32 +186,33 @@ class NetworkMetrics:
         self.cold_start_cloud.update({func: p_cold_cloud})
         self.cold_start_edge.update({func: p_cold_edge})
 
-    def update_arrival_rates(self, f: str, c: str, arrivals):
+    def update_arrival_rates(self, func_name: str, class_name: str, arrivals):
         """
         Updates arrival rates for couples of instances (Function, QoSClass)
-        :param f: function name
-        :param c: class name
+        :param func_name: function name
+        :param class_name: class name
         :param arrivals: number of arrivals for couples (f,c)
         :return: None
         """
-        # Update the clock and get the time interval
-        clock_stop = time.process_time()
-        print(f"clock start: {self.clock_start}")
-        print(f"clock stop: {clock_stop}")
-        t = clock_stop - self.clock_start
-        print(f"clock stop - clock start: {t}")
-
         # Search in function array for function f
-        func = self._search_function(f)
+        f = self._search_function(func_name)
 
         # Search in class array for class c
-        cl = self._search_class(c)
+        c = self._search_class(class_name)
 
-        # Calculate new arrivals rates
-        print(f"arrivals: {arrivals}")
-        new_arrival_rate = arrivals / t
-        print(f"arrival_rate: {new_arrival_rate}\n")
-        self.arrival_rates.update({(func, cl): new_arrival_rate})
+        # Update current arrivals and previous arrivals
+        if (f, c) in self.prev_arrivals.keys():
+            self.prev_arrivals[(f, c)] = self.arrivals[(f, c)]
+        self.arrivals[(f, c)] = arrivals
+
+        # If it's the first arrival update for the (function,class) pair
+        if func_name not in self.prev_arrivals.keys():
+            self.arrival_rates[(f, c)] = self.arrivals[(f, c)] / self.time
+        else:
+            new_arrivals = self.arrivals[(f, c)] - self.prev_arrivals[(f, c)]
+            new_rate = new_arrivals / (self.time - self.last_update_time)
+            self.arrival_rates[(f, c)] = (self.arrival_rate_alpha * new_rate +
+                                          (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])
 
     def update_bandwidth(self, bw_cloud: float, bw_edge: float):
         """
@@ -323,6 +352,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         :return: the list of the predictions
         """
         print("Received request\n")
+        self.net_metrics.update_time()
 
         # Recover useful data from incoming request
         print("incoming functions: ", request.functions, "\n")
@@ -367,7 +397,8 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                  aggregated_edge_memory=aggregated_memory,
                                                  # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
                                                  metrics=self.net_metrics,
-                                                 arrival_rates=self.net_metrics.arrival_rates, # fixme considera solo intervalli
+                                                 arrival_rates=self.net_metrics.arrival_rates,
+                                                 # fixme considera solo intervalli
                                                  serv_time=self.net_metrics.service_time,
                                                  serv_time_cloud=self.net_metrics.service_time_cloud,
                                                  serv_time_edge=self.net_metrics.service_time_edge,
@@ -378,18 +409,21 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                  offload_time_edge=self.net_metrics.offload_time_edge,  # lo facciamo
                                                  # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
                                                  # (la ho come input lato client)
-                                                 bandwidth_cloud=self.net_metrics.bandwidth_cloud, # fixme config
-                                                 bandwidth_edge=self.net_metrics.bandwidth_edge, # fixme config
+                                                 bandwidth_cloud=self.net_metrics.bandwidth_cloud,  # fixme config
+                                                 bandwidth_edge=self.net_metrics.bandwidth_edge,  # fixme config
                                                  # viene calcolato lato client e semplicemente recuperiamo il valore dal messaggio
                                                  cold_start_p_local=self.net_metrics.cold_start,
                                                  cold_start_p_cloud=self.net_metrics.cold_start_cloud,
                                                  cold_start_p_edge=self.net_metrics.cold_start_edge,
-                                                 budget=self.net_metrics.local_budget, #fixme config
-                                                 local_usable_memory_coeff=1.0  # fixme vedi come fatto nel simulatore aggiungendo fattore di loss + aggiungere contatori per eseguiti locale e bloccati + ogni volta azzerati
+                                                 budget=self.net_metrics.local_budget,  # fixme config
+                                                 local_usable_memory_coeff=1.0
+                                                 # fixme vedi come fatto nel simulatore aggiungendo fattore di loss + aggiungere contatori per eseguiti locale e bloccati + ogni volta azzerati
                                                  )
 
         # Marshal probabilities into gRPC Response and send back to client
         print(probs)
+        if probs is None:
+            probs = self.net_metrics.probs
         response = prepare_response(probs, shares)
         return response
 
