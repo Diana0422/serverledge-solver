@@ -41,6 +41,7 @@ class NetworkMetrics:
         # general config and functions/classes info
         self.functions = []  # mantiene il riferimento alle funzioni in arrivo [Function]
         self.classes = []  # mantiene il riferimento alle classi in arrivo [QoSClass]
+        self.local_usable_memory_coeff = 1.0  # coefficient that explains the local memory available on node
         self.verbosity = 2  # TODO: impostare config
         self.cloud_cost = 0  # TODO: impostare config
         self.budget = 100  # TODO: impostare config
@@ -237,6 +238,8 @@ class NetworkMetrics:
         :param bw_edge: bandwidth of the link to the edge
         :return: None
         """
+        # FIXME vedi se giusto
+        """ 
         # Check rtt, if it's zero then it means that local execution happened
         if self.offload_time_edge == 0:
             self.bandwidth_edge = float("inf")
@@ -246,6 +249,17 @@ class NetworkMetrics:
             self.bandwidth_cloud = float("inf")
         else:
             self.bandwidth_cloud = bw_cloud
+        """
+        self.bandwidth_edge = bw_edge
+        self.bandwidth_cloud = bw_cloud
+
+    def update_local_usable_mem_coefficient(self, c: float):
+        """
+        Updates the local usable memory coefficient of the node
+        :param c: the new value of the coefficient
+        :return:
+        """
+        self.local_usable_memory_coeff = c
 
 
 def show_metrics():
@@ -379,6 +393,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         aggregated_memory = request.memory_aggregate
         self.net_metrics.update_rtt(True, request.offload_latency_cloud)
         self.net_metrics.update_rtt(False, request.offload_latency_edge)
+        self.net_metrics.update_local_usable_mem_coefficient(request.usable_memory_coefficient)
 
         total_new_arrivals = 0
 
@@ -418,12 +433,12 @@ class Estimator(solver_pb2_grpc.SolverServicer):
             probs, shares = opt.update_probabilities(local_total_memory=total_memory,
                                                      # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
                                                      cloud_cost=cloud_cost,
-                                                     # di questo mi interessa solo il costo, che arriva già nella richiesta originale (Request.cost)
+                                                     # configuration client side
                                                      aggregated_edge_memory=aggregated_memory,
-                                                     # lo facciamo arrivare con la richiesta perché la posso calcolare tramite il registry locale
+                                                     # calc. client side as the sum of memory available in nearby nodes
                                                      metrics=self.net_metrics,
                                                      arrival_rates=self.net_metrics.arrival_rates,
-                                                     # fixme considera solo intervalli
+                                                     # updated value for each time interval as done in simulation
                                                      serv_time=self.net_metrics.service_time,
                                                      serv_time_cloud=self.net_metrics.service_time_cloud,
                                                      serv_time_edge=self.net_metrics.service_time_edge,
@@ -432,18 +447,17 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                      init_time_edge=self.net_metrics.init_time_edge,
                                                      offload_time_cloud=self.net_metrics.offload_time_cloud,
                                                      offload_time_edge=self.net_metrics.offload_time_edge,
-                                                     # lo facciamo
-                                                     # arrivare con la richiesta perché la posso calcolare sempre tramite vivaldi
-                                                     # (la ho come input lato client)
-                                                     bandwidth_cloud=self.net_metrics.bandwidth_cloud,  # fixme config
-                                                     bandwidth_edge=self.net_metrics.bandwidth_edge,  # fixme config
-                                                     # viene calcolato lato client e semplicemente recuperiamo il valore dal messaggio
+                                                     # input calculated client side
+                                                     bandwidth_cloud=self.net_metrics.bandwidth_cloud,
+                                                     # configuration client side
+                                                     bandwidth_edge=self.net_metrics.bandwidth_edge,
+                                                     # configuration client side
                                                      cold_start_p_local=self.net_metrics.cold_start,
                                                      cold_start_p_cloud=self.net_metrics.cold_start_cloud,
                                                      cold_start_p_edge=self.net_metrics.cold_start_edge,
                                                      budget=self.net_metrics.local_budget,  # fixme config
-                                                     local_usable_memory_coeff=1.0
-                                                     # fixme vedi come fatto nel simulatore aggiungendo fattore di loss + aggiungere contatori per eseguiti locale e bloccati + ogni volta azzerati
+                                                     local_usable_memory_coeff=self.net_metrics.local_usable_memory_coeff
+                                                     # calc. client side using loss percentage of requests
                                                      )
         else:
             probs = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
