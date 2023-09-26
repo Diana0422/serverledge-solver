@@ -44,7 +44,9 @@ class NetworkMetrics:
         self.classes = []  # mantiene il riferimento alle classi in arrivo [QoSClass]
         self.local_usable_memory_coeff = 1.0  # coefficient that explains the local memory available on node
         self.verbosity = self.props.Verbosity  # config
-        self.arrival_rate_alpha = 1.0  # TODO: impostare config
+        self.arrival_rate_alpha = self.props.ArrivalAlpha
+        # weight of the new rates wrt the old rates in the arrival rates calculation
+        # FIXME: impostato come config lato server, va bene?
 
         self.bandwidth_cloud = 0.0
         self.bandwidth_edge = 0.0
@@ -429,7 +431,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
         if total_new_arrivals != 0:
             probs, shares = opt.update_probabilities(local_total_memory=total_memory,
-                                                     # mi interessa solamente la memoria locale, che posso fare arrivare come informazione dal lato client
+                                                     # input from client side
                                                      cloud_cost=cloud_cost,
                                                      # configuration client side
                                                      aggregated_edge_memory=aggregated_memory,

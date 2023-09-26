@@ -5,6 +5,7 @@ from jproperties import Properties
 class Props:
     ServerPort: int
     Verbosity: int
+    ArrivalAlpha: float
 
     def __init__(self):
         configs = Properties()
@@ -12,4 +13,4 @@ class Props:
             configs.load(config_file, "utf-8")
             self.ServerPort = configs.get("ServerPort")[0]
             self.Verbosity = int(configs.get("Verbosity")[0])
-
+            self.ArrivalAlpha = float(configs.get("ArrivalAlpha")[0])
