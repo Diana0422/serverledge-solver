@@ -43,3 +43,8 @@ Per poter eseguire dell'immagine di docker, assegnandole un nome e un indirizzo 
 docker run --publish 2500:2500 --name Solver serverledge-solver
 ```
 
+Per fare la build dell'imagine su Docker Hub:
+```
+docker build --platform linux/amd64 -t diana0422/serverledge-solver .
+```
+

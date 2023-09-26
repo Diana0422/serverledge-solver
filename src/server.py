@@ -37,20 +37,18 @@ class NetworkMetrics:
         self.clock_start = time.process_time()  # inizia a contare per raccogliere gli intervalli temporali e calcolare i tassi
         self.time = 0
         self.last_update_time = 0
+        self.props = p.Props()
 
         # general config and functions/classes info
         self.functions = []  # mantiene il riferimento alle funzioni in arrivo [Function]
         self.classes = []  # mantiene il riferimento alle classi in arrivo [QoSClass]
         self.local_usable_memory_coeff = 1.0  # coefficient that explains the local memory available on node
-        self.verbosity = 2  # TODO: impostare config
-        self.cloud_cost = 0  # TODO: impostare config
-        self.budget = 100  # TODO: impostare config
-        self.local_budget = self.budget  # TODO oppure self.budget / len(self.network.get_edge_nodes())
+        self.verbosity = self.props.Verbosity  # config
+        self.local_budget = 100  # TODO impostare config
         self.arrival_rate_alpha = 1.0  # TODO: impostare config
 
-        # TODO Info to be calculated
-        self.bandwidth_cloud = 0.0  # fixme config
-        self.bandwidth_edge = 0.0  # fixme config
+        self.bandwidth_cloud = 0.0
+        self.bandwidth_edge = 0.0
         self.arrivals = {}  # arrivi per (f,c)
         self.prev_arrivals = {}  # arrivi per (f,c) nel precedente intervallo temporale
         self.arrival_rates = {}  # rate di arrivo per (f,c)
