@@ -66,7 +66,7 @@ class NetworkMetrics:
         self.cold_start_edge = {}  # probabilità di cold start edge per (f,c) (Function, float)
 
         # result
-        self.probs = {(f, c): [0.3, 0.3, 0.3, 0.1] for f in self.functions for c in self.classes}
+        self.probs = {(f, c): [0.5, 0.25, 0.25, 0.0] for f in self.functions for c in self.classes}
 
     def _search_function(self, f_name: str) -> Function:
         """
