@@ -58,12 +58,19 @@ const METRICS_ENABLED = "metrics.enabled"
 
 const METRICS_PORT = "metrics.port"
 
+// Bandwidth between edge-cloud
+const BANDWIDTH_CLOUD = "metrics.bandwidth.cloud"
+
+// Badnwidth between edge-edge
+const BANDWIDTH_EDGE = "metrics.bandwidth.cloud"
+
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
 const SCHEDULING_POLICY_VERSION = "scheduler.version"
 
 const CLOUD_COST = "scheduler.cloud.cost"
+const BUDGET = "scheduler.local.budget"
 
 // Capacity of the queue (possibly) used by the scheduler
 const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"

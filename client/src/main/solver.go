@@ -11,6 +11,7 @@ import (
 	"github.com/LK4D4/trylock"
 	"google.golang.org/grpc"
 	"log"
+	"math"
 )
 
 const (
@@ -73,6 +74,28 @@ func calculateAggregatedMem() float32 {
 		aggrMem += float32(info.AvailableMemMB)
 	}
 	return aggrMem
+}
+
+// calculateUsableMemoryCoefficient calculates the coefficient that explains if the local node has memory available to
+// execute the function. It's calculated using the loss percentage of the local node.
+func calculateUsableMemoryCoefficient() float64 {
+	localRequests := node.Resources.RequestsCount
+	blockedRequests := node.Resources.DropRequestsCount
+	loss := 0.0
+	coefficient := 1.1
+
+	if localRequests > 0 {
+		loss = float64(float32(blockedRequests) / float32(localRequests))
+	} else {
+		loss = 0
+	}
+
+	if loss > 0.0 {
+		coefficient -= coefficient * loss / 2.0
+	} else {
+		coefficient = math.Min(coefficient*1.1, 1.0)
+	}
+	return coefficient
 }
 
 /*func solve(m map[string]*functionInfo) {
@@ -267,6 +290,8 @@ func solve(m map[string]*functionInfo) {
 		pCold := float32(fInfo.probCold[LOCAL])
 		pColdOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
 		pColdOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
+		bandwidthCloud := float32(config.GetFloat(config.BANDWIDTH_CLOUD, 1.0))
+		bandwidthEdge := float32(config.GetFloat(config.BANDWIDTH_EDGE, 1.0))
 
 		x := &pb.Function{
 			Name:                   &name,
@@ -282,6 +307,8 @@ func solve(m map[string]*functionInfo) {
 			Pcold:                  &pCold,
 			PcoldOffloadedCloud:    &pColdOffloadedCloud,
 			PcoldOffloadedEdge:     &pColdOffloadedEdge,
+			BandwidthCloud:         &bandwidthCloud,
+			BandwidthEdge:          &bandwidthEdge,
 		}
 
 		functionList = append(functionList, x)
@@ -304,21 +331,24 @@ func solve(m map[string]*functionInfo) {
 	}
 
 	aggregatedEdgeMemory := calculateAggregatedMem()
-	// log.Println("aggregatedEdgeMemory: ", aggregatedEdgeMemory)
 	offloadLatencyCloud := float32(CloudOffloadLatency)
 	offloadLatencyEdge := float32(EdgeOffloadLatency)
 	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
+	localBudget := float32(config.GetFloat(config.BUDGET, 0.01))
 	localCpu := float32(node.Resources.MaxCPUs)
 	localMem := float32(node.Resources.MaxMemMB)
+	localUsableMem := float32(calculateUsableMemoryCoefficient())
 	response, err := client.Solve(context.Background(), &pb.Request{
-		OffloadLatencyCloud: &offloadLatencyCloud,
-		OffloadLatencyEdge:  &offloadLatencyEdge,
-		Functions:           functionList,
-		Classes:             classList,
-		CostCloud:           &costCloud,
-		MemoryLocal:         &localMem,
-		CpuLocal:            &localCpu,
-		MemoryAggregate:     &aggregatedEdgeMemory,
+		OffloadLatencyCloud:     &offloadLatencyCloud,
+		OffloadLatencyEdge:      &offloadLatencyEdge,
+		Functions:               functionList,
+		Classes:                 classList,
+		CostCloud:               &costCloud,
+		LocalBudget:             &localBudget,
+		MemoryLocal:             &localMem,
+		CpuLocal:                &localCpu,
+		MemoryAggregate:         &aggregatedEdgeMemory,
+		UsableMemoryCoefficient: &localUsableMem,
 	})
 
 	if err != nil {

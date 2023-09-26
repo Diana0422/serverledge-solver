@@ -12,12 +12,14 @@ var NodeIdentifier string
 
 type NodeResources struct {
 	sync.RWMutex
-	AvailableMemMB int64
-	AvailableCPUs  float64
-	MaxMemMB       int64
-	MaxCPUs        float64
-	DropCount      int64
-	ContainerPools map[string]*ContainerPool
+	AvailableMemMB    int64
+	AvailableCPUs     float64
+	MaxMemMB          int64
+	MaxCPUs           float64
+	DropCount         int64
+	ContainerPools    map[string]*ContainerPool
+	RequestsCount     int64
+	DropRequestsCount int64
 }
 
 func (n NodeResources) String() string {

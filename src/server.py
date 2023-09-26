@@ -44,7 +44,6 @@ class NetworkMetrics:
         self.classes = []  # mantiene il riferimento alle classi in arrivo [QoSClass]
         self.local_usable_memory_coeff = 1.0  # coefficient that explains the local memory available on node
         self.verbosity = self.props.Verbosity  # config
-        self.local_budget = 100  # TODO impostare config
         self.arrival_rate_alpha = 1.0  # TODO: impostare config
 
         self.bandwidth_cloud = 0.0
@@ -388,6 +387,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         print("incoming functions: ", request.functions, "\n")
         total_memory = request.memory_local
         cloud_cost = request.cost_cloud
+        local_budget = request.local_budget
         aggregated_memory = request.memory_aggregate
         self.net_metrics.update_rtt(True, request.offload_latency_cloud)
         self.net_metrics.update_rtt(False, request.offload_latency_edge)
@@ -453,7 +453,8 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                      cold_start_p_local=self.net_metrics.cold_start,
                                                      cold_start_p_cloud=self.net_metrics.cold_start_cloud,
                                                      cold_start_p_edge=self.net_metrics.cold_start_edge,
-                                                     budget=self.net_metrics.local_budget,  # fixme config
+                                                     budget=local_budget,
+                                                     # configuration client side
                                                      local_usable_memory_coeff=self.net_metrics.local_usable_memory_coeff
                                                      # calc. client side using loss percentage of requests
                                                      )
