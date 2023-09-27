@@ -69,6 +69,7 @@ class NetworkMetrics:
 
         # result
         self.probs = {(f, c): [0.5, 0.25, 0.25, 0.0] for f in self.functions for c in self.classes}
+        self.evaluation_time = time.process_time()
 
     def _search_function(self, f_name: str) -> Function:
         """
@@ -314,9 +315,11 @@ def initializing_network() -> infra.Network:
     return network
 
 
-def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(Function, QoSClass), [float]]):
+def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(Function, QoSClass), [float]],
+                     eval_time: float):
     """
     Sends the response back to the client
+    :param eval_time:
     :param shares: dictionary with the shares values for couples (f,c)
     :param probs: dictionary with the solution of the problem for couples (f,c)
     :return: None
@@ -359,7 +362,7 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
         f_responses.append(func_resp)
 
     print(f"f_responses: {f_responses}")
-    response = solver_pb2.Response(time_taken=0.0)
+    response = solver_pb2.Response(time_taken=eval_time)
     response.f_response.extend(f_responses)
     print(f"response: {response}")
     return response
@@ -463,9 +466,12 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         else:
             probs = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
             shares = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
+
+        eval_t = time.process_time() - self.net_metrics.evaluation_time
         # Marshal probabilities into gRPC Response and send back to client
         print(probs)
-        response = prepare_response(probs, shares)
+        response = prepare_response(probs, shares, eval_t)
+        self.net_metrics.evaluation_time = time.process_time()
         return response
 
 
