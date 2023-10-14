@@ -130,6 +130,27 @@ class NetworkMetrics:
             self.classes.append(qos_class)
         print(self.classes)
 
+    def update_function_class(self, function: solver_pb2.Function):
+        """
+        TODO
+        :param function:
+        :return:
+        """
+        function_name = function.name
+        # Search in function array for function f
+        f = self._search_function(function_name)
+
+        for c in self.classes:
+            if (f, c) not in self.arrival_rates:
+                self.arrival_rates.update({(f, c): 0.0})
+            elif (f, c) not in self.prev_arrivals:
+                self.prev_arrivals.update({(f, c): 0.0})
+            elif (f, c) not in self.arrivals:
+                self.arrivals.update({(f, c): 0.0})
+        print(f"arrivals: {self.arrivals}")
+        print(f"arrival rates: {self.arrival_rates}")
+        print(f"prev_arrivals: {self.arrivals}")
+
     def update_rtt(self, is_cloud_rtt: bool, rtt: float):
         """
         Updates offload time metric, both cloud and edge rtt
@@ -218,18 +239,25 @@ class NetworkMetrics:
         c = self._search_class(class_name)
 
         # Update current arrivals and previous arrivals
+        print(f"PREV.ARR: {self.prev_arrivals}")
+
+        print(f"keys: {self.prev_arrivals.keys()}")
         if (f, c) in self.prev_arrivals.keys():
-            self.prev_arrivals[(f, c)] = self.arrivals[(f, c)]
-        self.arrivals[(f, c)] = arrivals
+            print(f"{(f, c)}in prev arrivals")
+            self.prev_arrivals.update({(f, c): self.arrivals[(f, c)]})
+            print(f"PREV.ARR after update: {self.prev_arrivals}")
+        print(f"ARR: {self.arrivals}")
+        self.arrivals.update({(f, c): arrivals})
+        print(f"ARR after update: {self.arrivals}")
 
         # If it's the first arrival update for the (function,class) pair
         if func_name not in self.prev_arrivals.keys():
-            self.arrival_rates[(f, c)] = self.arrivals[(f, c)] / self.time
+            self.arrival_rates.update({(f, c): self.arrivals[(f, c)] / self.time})
         else:
             new_arrivals = self.arrivals[(f, c)] - self.prev_arrivals[(f, c)]
             new_rate = new_arrivals / (self.time - self.last_update_time)
-            self.arrival_rates[(f, c)] = (self.arrival_rate_alpha * new_rate +
-                                          (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])
+            self.arrival_rates.update({(f, c): (self.arrival_rate_alpha * new_rate +
+                                                (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])})
 
     def update_bandwidth(self, bw_cloud: float, bw_edge: float):
         """
@@ -405,6 +433,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
         for function in request.functions:
             self.net_metrics.update_functions(function)
+            self.net_metrics.update_function_class(function)
 
             for inv in function.invocations:
                 function_name = function.name

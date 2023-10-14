@@ -28,10 +28,6 @@ def update_probabilities(local_total_memory,
     F_C = [(f, c) for f in F for c in C]
     print(f"F_C: {F_C}")
 
-    #fixme remove
-    bandwidth_cloud = 1.0
-    bandwidth_edge = 1.0
-
     if VERBOSE > 1:
         print("------------------------------")
         print(f"Edge memory: {aggregated_edge_memory}")
