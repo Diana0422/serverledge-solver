@@ -233,7 +233,7 @@ class NetworkMetrics:
         Updates arrival rates for couples of instances (Function, QoSClass)
         :param func_name: function name
         :param class_name: class name
-        :param arrivals: number of arrivals for couples (f,c)
+        :param arrivals: new arrival rate for the couple (f,c)
         :return: None
         """
         # Search in function array for function f
@@ -244,7 +244,12 @@ class NetworkMetrics:
 
         # If it's the first arrival update for the (function,class) pair
         with ARRIVAL_RATES_LOCK:
-            self.arrival_rates.update({(f, c): arrivals})
+            if (f, c) not in self.arrival_rates.keys():
+                self.arrival_rates.update({(f, c): arrivals})
+            else:
+                new_rate = arrivals
+                self.arrival_rates[(f, c)] = (self.arrival_rate_alpha * new_rate +
+                                              (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])
 
     def update_arrival_rates(self, func_name: str, class_name: str, arrivals):
         """
@@ -386,10 +391,10 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
             pC = values[1]
             pE = values[2]
             pD = values[3]
-            #FIXME remove print(f"pL: {pL}")
-            #FIXME remove print(f"pC: {pC}")
-            #FIXME remove print(f"pE: {pE}")
-            #FIXME remove print(f"pD: {pD}")
+            # FIXME remove print(f"pL: {pL}")
+            # FIXME remove print(f"pC: {pC}")
+            # FIXME remove print(f"pE: {pE}")
+            # FIXME remove print(f"pD: {pD}")
             share = shares.get((f, c))
             class_resp = solver_pb2.ClassResponse(name=c_name, pL=pL, pC=pC, pE=pE, pD=pD, share=share)
             if f not in f_c_resp:
