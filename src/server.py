@@ -142,8 +142,6 @@ class NetworkMetrics:
         # Search in function array for function f
         f = self._search_function(function_name)
 
-        print(f"arrival rates keys: {self.arrival_rates.keys()}")
-        print(f"arrival keys: {self.arrivals.keys()}")
         for c in self.classes:
             with ARRIVAL_RATES_LOCK:
                 print(f"{(f, c)} is in arrival rates keys?: {(f, c) in self.arrival_rates.keys()}")
@@ -153,9 +151,9 @@ class NetworkMetrics:
                 print(f"{(f, c)} is in arrivals keys?: {(f, c) in self.arrivals.keys()}")
                 if (f, c) not in self.arrivals.keys():
                     self.arrivals.update({(f, c): 0.0})
-        print(f"arrivals: {self.arrivals}")
-        print(f"arrival rates: {self.arrival_rates}")
-        print(f"prev_arrivals: {self.prev_arrivals}")
+        # FIXME REMOVE print(f"arrivals: {self.arrivals}")
+        # FIXME REMOVE print(f"arrival rates: {self.arrival_rates}")
+        # FIXME REMOVE print(f"prev_arrivals: {self.prev_arrivals}")
 
     def update_rtt(self, is_cloud_rtt: bool, rtt: float):
         """
@@ -255,6 +253,7 @@ class NetworkMetrics:
         :param class_name: class name
         :param arrivals: number of arrivals for couples (f,c)
         :return: None
+        TODO remove
         """
         # Search in function array for function f
         f = self._search_function(func_name)
@@ -438,7 +437,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         self.net_metrics.update_time()
 
         # Recover useful data from incoming request
-        print("incoming functions: ", request.functions, "\n")
+        # FIXME REMOVE print("incoming functions: ", request.functions, "\n")
         total_memory = request.memory_local
         cloud_cost = request.cost_cloud
         local_budget = request.local_budget
