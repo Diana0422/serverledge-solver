@@ -98,6 +98,7 @@ def update_probabilities(local_total_memory,
         print(f"Deadline Sat ProbC: {deadline_satisfaction_prob_cloud}")
         print(f"Deadline Sat ProbE: {deadline_satisfaction_prob_edge}")
         print("------------------------------")
+    print(f"arrival rates (f,c): {[arrival_rates[(f, c)] for f, c in F_C]}")
 
     prob += (pl.lpSum([c.utility * arrival_rates[(f, c)] *
                        (pL[f][c] * deadline_satisfaction_prob_local[(f, c)] +

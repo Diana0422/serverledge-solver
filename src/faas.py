@@ -103,6 +103,9 @@ class QoSClass:
     def __le__(self, other):
         return self.name <= other.name
 
+    def __eq__(self, other):
+        return self.name == other.name
+
 
 @dataclass
 class Function:
@@ -124,6 +127,9 @@ class Function:
 
     def __le__(self, other):
         return self.name <= other.name
+
+    def __eq__(self, other):
+        return self.name == other.name
 
 
 @dataclass

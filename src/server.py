@@ -12,6 +12,10 @@ WAIT_TIME_SECONDS = 120
 
 logging.basicConfig(level=logging.INFO)
 
+ARRIVALS_LOCK = threading.Lock()
+PREV_ARRIVALS_LOCK = threading.Lock()
+ARRIVAL_RATES_LOCK = threading.Lock()
+
 
 def _insert_if_not_present(ls: list, key: str, o) -> bool:
     """
@@ -110,7 +114,6 @@ class NetworkMetrics:
         func = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
         if not _insert_if_not_present(ls=self.functions, key=function_name, o=func):
             self.functions.append(func)
-        print(self.functions)
 
     def update_classes(self, c: solver_pb2.QosClass):
         """
@@ -128,7 +131,6 @@ class NetworkMetrics:
 
         if not _insert_if_not_present(ls=self.classes, key=class_name, o=qos_class):
             self.classes.append(qos_class)
-        print(self.classes)
 
     def update_function_class(self, function: solver_pb2.Function):
         """
@@ -140,16 +142,20 @@ class NetworkMetrics:
         # Search in function array for function f
         f = self._search_function(function_name)
 
+        print(f"arrival rates keys: {self.arrival_rates.keys()}")
+        print(f"arrival keys: {self.arrivals.keys()}")
         for c in self.classes:
-            if (f, c) not in self.arrival_rates:
-                self.arrival_rates.update({(f, c): 0.0})
-            elif (f, c) not in self.prev_arrivals:
-                self.prev_arrivals.update({(f, c): 0.0})
-            elif (f, c) not in self.arrivals:
-                self.arrivals.update({(f, c): 0.0})
+            with ARRIVAL_RATES_LOCK:
+                print(f"{(f, c)} is in arrival rates keys?: {(f, c) in self.arrival_rates.keys()}")
+                if (f, c) not in self.arrival_rates.keys():
+                    self.arrival_rates.update({(f, c): 0.0})
+            with ARRIVALS_LOCK:
+                print(f"{(f, c)} is in arrivals keys?: {(f, c) in self.arrivals.keys()}")
+                if (f, c) not in self.arrivals.keys():
+                    self.arrivals.update({(f, c): 0.0})
         print(f"arrivals: {self.arrivals}")
         print(f"arrival rates: {self.arrival_rates}")
-        print(f"prev_arrivals: {self.arrivals}")
+        print(f"prev_arrivals: {self.prev_arrivals}")
 
     def update_rtt(self, is_cloud_rtt: bool, rtt: float):
         """
@@ -224,6 +230,24 @@ class NetworkMetrics:
         self.cold_start_cloud.update({func: p_cold_cloud})
         self.cold_start_edge.update({func: p_cold_edge})
 
+    def update_arrival_rates_2(self, func_name: str, class_name: str, arrivals):
+        """
+        Updates arrival rates for couples of instances (Function, QoSClass)
+        :param func_name: function name
+        :param class_name: class name
+        :param arrivals: number of arrivals for couples (f,c)
+        :return: None
+        """
+        # Search in function array for function f
+        f = self._search_function(func_name)
+
+        # Search in class array for class c
+        c = self._search_class(class_name)
+
+        # If it's the first arrival update for the (function,class) pair
+        with ARRIVAL_RATES_LOCK:
+            self.arrival_rates.update({(f, c): arrivals})
+
     def update_arrival_rates(self, func_name: str, class_name: str, arrivals):
         """
         Updates arrival rates for couples of instances (Function, QoSClass)
@@ -239,25 +263,34 @@ class NetworkMetrics:
         c = self._search_class(class_name)
 
         # Update current arrivals and previous arrivals
-        print(f"PREV.ARR: {self.prev_arrivals}")
 
-        print(f"keys: {self.prev_arrivals.keys()}")
-        if (f, c) in self.prev_arrivals.keys():
-            print(f"{(f, c)}in prev arrivals")
-            self.prev_arrivals.update({(f, c): self.arrivals[(f, c)]})
-            print(f"PREV.ARR after update: {self.prev_arrivals}")
-        print(f"ARR: {self.arrivals}")
-        self.arrivals.update({(f, c): arrivals})
+        with PREV_ARRIVALS_LOCK:
+            print(f"PREV.ARR: {self.prev_arrivals}")
+            if (f, c) in self.prev_arrivals.keys():
+                print(f"{(f, c)} is in prev arrivals")
+                self.prev_arrivals[(f, c)] = self.arrivals[(f, c)]
+            else:
+                self.prev_arrivals.update({(f, c): 0.0})
+        print(f"PREV.ARR after update: {self.prev_arrivals}")
+
+        with ARRIVALS_LOCK:
+            print(f"ARR: {self.arrivals}")
+            if (f, c) in self.arrivals.keys():
+                print(f"{(f, c)} is in arrivals")
+                self.arrivals[(f, c)] = arrivals
+            else:
+                self.arrivals.update({(f, c): 0.0})
         print(f"ARR after update: {self.arrivals}")
 
         # If it's the first arrival update for the (function,class) pair
-        if func_name not in self.prev_arrivals.keys():
-            self.arrival_rates.update({(f, c): self.arrivals[(f, c)] / self.time})
-        else:
-            new_arrivals = self.arrivals[(f, c)] - self.prev_arrivals[(f, c)]
-            new_rate = new_arrivals / (self.time - self.last_update_time)
-            self.arrival_rates.update({(f, c): (self.arrival_rate_alpha * new_rate +
-                                                (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])})
+        with ARRIVAL_RATES_LOCK:
+            if (f, c) not in self.prev_arrivals.keys():
+                self.arrival_rates.update({(f, c): self.arrivals[(f, c)] / self.time})
+            else:
+                new_arrivals = self.arrivals[(f, c)] - self.prev_arrivals[(f, c)]
+                new_rate = new_arrivals / (self.time - self.last_update_time)
+                self.arrival_rates[(f, c)] = (self.arrival_rate_alpha * new_rate +
+                                              (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])
 
     def update_bandwidth(self, bw_cloud: float, bw_edge: float):
         """
@@ -265,18 +298,6 @@ class NetworkMetrics:
         :param bw_cloud: bandwidth of the link to the cloud
         :param bw_edge: bandwidth of the link to the edge
         :return: None
-        """
-        # FIXME vedi se giusto
-        """ 
-        # Check rtt, if it's zero then it means that local execution happened
-        if self.offload_time_edge == 0:
-            self.bandwidth_edge = float("inf")
-        else:
-            self.bandwidth_edge = bw_edge
-        if self.offload_time_cloud == 0:
-            self.bandwidth_cloud = float("inf")
-        else:
-            self.bandwidth_cloud = bw_cloud
         """
         self.bandwidth_edge = bw_edge
         self.bandwidth_cloud = bw_cloud
@@ -366,10 +387,10 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
             pC = values[1]
             pE = values[2]
             pD = values[3]
-            print(f"pL: {pL}")
-            print(f"pC: {pC}")
-            print(f"pE: {pE}")
-            print(f"pD: {pD}")
+            #FIXME remove print(f"pL: {pL}")
+            #FIXME remove print(f"pC: {pC}")
+            #FIXME remove print(f"pE: {pE}")
+            #FIXME remove print(f"pD: {pD}")
             share = shares.get((f, c))
             class_resp = solver_pb2.ClassResponse(name=c_name, pL=pL, pC=pC, pE=pE, pD=pD, share=share)
             if f not in f_c_resp:
@@ -382,17 +403,17 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
     f_responses = []
     for f in f_c_resp:
         f_name = f.name
-        print(f"function name: {f_name}")
+        # FIXME remove print(f"function name: {f_name}")
         c_responses = f_c_resp[f]
-        print(f"c_responses: {c_responses}")
+        # FIXME remove print(f"c_responses: {c_responses}")
         func_resp = solver_pb2.FunctionResponse(name=f_name)
         func_resp.class_responses.extend(c_responses)
         f_responses.append(func_resp)
 
-    print(f"f_responses: {f_responses}")
+    # FIXME remove print(f"f_responses: {f_responses}")
     response = solver_pb2.Response(time_taken=eval_time)
     response.f_response.extend(f_responses)
-    print(f"response: {response}")
+    # FIXME remove print(f"response: {response}")
     return response
 
 
@@ -436,30 +457,31 @@ class Estimator(solver_pb2_grpc.SolverServicer):
             self.net_metrics.update_function_class(function)
 
             for inv in function.invocations:
-                function_name = function.name
-                class_name = inv.qos_class
+                function_name = function.name  # function invoked
+                class_name = inv.qos_class  # class of service of the function invoked
 
                 new_arrivals = inv.arrivals
                 total_new_arrivals += new_arrivals
+
                 if new_arrivals != 0:
-                    self.net_metrics.update_service_time(function_name,
-                                                         service_local=function.duration,
-                                                         service_cloud=function.duration_offloaded_cloud,
-                                                         service_edge=function.duration_offloaded_edge)
-                    self.net_metrics.update_init_time(function_name,
-                                                      init_local=function.init_time,
-                                                      init_cloud=function.init_time_offloaded_cloud,
-                                                      init_edge=function.init_time_offloaded_edge)
+                    self.net_metrics.update_arrival_rates_2(function_name, class_name, arrivals=inv.arrivals)
 
-                    self.net_metrics.update_arrival_rates(function_name, class_name, arrivals=inv.arrivals)
+                self.net_metrics.update_service_time(function_name,
+                                                     service_local=function.duration,
+                                                     service_cloud=function.duration_offloaded_cloud,
+                                                     service_edge=function.duration_offloaded_edge)
+                self.net_metrics.update_init_time(function_name,
+                                                  init_local=function.init_time,
+                                                  init_cloud=function.init_time_offloaded_cloud,
+                                                  init_edge=function.init_time_offloaded_edge)
 
-                    self.net_metrics.update_cold_start(function_name,
-                                                       p_cold_local=function.pcold,
-                                                       p_cold_cloud=function.pcold_offloaded_cloud,
-                                                       p_cold_edge=function.pcold_offloaded_edge)
+                self.net_metrics.update_cold_start(function_name,
+                                                   p_cold_local=function.pcold,
+                                                   p_cold_cloud=function.pcold_offloaded_cloud,
+                                                   p_cold_edge=function.pcold_offloaded_edge)
 
-                    self.net_metrics.update_bandwidth(bw_cloud=function.bandwidth_cloud,
-                                                      bw_edge=function.bandwidth_edge)
+                self.net_metrics.update_bandwidth(bw_cloud=function.bandwidth_cloud,
+                                                  bw_edge=function.bandwidth_edge)
 
         if total_new_arrivals != 0:
             probs, shares = opt.update_probabilities(local_total_memory=total_memory,
