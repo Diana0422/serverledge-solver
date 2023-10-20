@@ -50,7 +50,6 @@ class NetworkMetrics:
         self.verbosity = self.props.Verbosity  # config
         self.arrival_rate_alpha = self.props.ArrivalAlpha
         # weight of the new rates wrt the old rates in the arrival rates calculation
-        # FIXME: impostato come config lato server, va bene?
 
         self.bandwidth_cloud = 0.0
         self.bandwidth_edge = 0.0
@@ -134,9 +133,9 @@ class NetworkMetrics:
 
     def update_function_class(self, function: solver_pb2.Function):
         """
-        TODO
-        :param function:
-        :return:
+        Adds missing couples (function, class) in arrivals and arrival_rates dictionaries
+        :param function: the function to add
+        :return: None
         """
         function_name = function.name
         # Search in function array for function f
@@ -144,16 +143,14 @@ class NetworkMetrics:
 
         for c in self.classes:
             with ARRIVAL_RATES_LOCK:
-                print(f"{(f, c)} is in arrival rates keys?: {(f, c) in self.arrival_rates.keys()}")
                 if (f, c) not in self.arrival_rates.keys():
                     self.arrival_rates.update({(f, c): 0.0})
             with ARRIVALS_LOCK:
-                print(f"{(f, c)} is in arrivals keys?: {(f, c) in self.arrivals.keys()}")
                 if (f, c) not in self.arrivals.keys():
                     self.arrivals.update({(f, c): 0.0})
-        # FIXME REMOVE print(f"arrivals: {self.arrivals}")
-        # FIXME REMOVE print(f"arrival rates: {self.arrival_rates}")
-        # FIXME REMOVE print(f"prev_arrivals: {self.prev_arrivals}")
+        # FIXME AUDIT print(f"arrivals: {self.arrivals}")
+        # FIXME AUDIT print(f"arrival rates: {self.arrival_rates}")
+        # FIXME AUDIT print(f"prev_arrivals: {self.prev_arrivals}")
 
     def update_rtt(self, is_cloud_rtt: bool, rtt: float):
         """
@@ -228,7 +225,7 @@ class NetworkMetrics:
         self.cold_start_cloud.update({func: p_cold_cloud})
         self.cold_start_edge.update({func: p_cold_edge})
 
-    def update_arrival_rates_2(self, func_name: str, class_name: str, arrivals):
+    def update_arrival_rates(self, func_name: str, class_name: str, arrivals):
         """
         Updates arrival rates for couples of instances (Function, QoSClass)
         :param func_name: function name
@@ -251,51 +248,6 @@ class NetworkMetrics:
                 self.arrival_rates[(f, c)] = (self.arrival_rate_alpha * new_rate +
                                               (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])
 
-    def update_arrival_rates(self, func_name: str, class_name: str, arrivals):
-        """
-        Updates arrival rates for couples of instances (Function, QoSClass)
-        :param func_name: function name
-        :param class_name: class name
-        :param arrivals: number of arrivals for couples (f,c)
-        :return: None
-        TODO remove
-        """
-        # Search in function array for function f
-        f = self._search_function(func_name)
-
-        # Search in class array for class c
-        c = self._search_class(class_name)
-
-        # Update current arrivals and previous arrivals
-
-        with PREV_ARRIVALS_LOCK:
-            print(f"PREV.ARR: {self.prev_arrivals}")
-            if (f, c) in self.prev_arrivals.keys():
-                print(f"{(f, c)} is in prev arrivals")
-                self.prev_arrivals[(f, c)] = self.arrivals[(f, c)]
-            else:
-                self.prev_arrivals.update({(f, c): 0.0})
-        print(f"PREV.ARR after update: {self.prev_arrivals}")
-
-        with ARRIVALS_LOCK:
-            print(f"ARR: {self.arrivals}")
-            if (f, c) in self.arrivals.keys():
-                print(f"{(f, c)} is in arrivals")
-                self.arrivals[(f, c)] = arrivals
-            else:
-                self.arrivals.update({(f, c): 0.0})
-        print(f"ARR after update: {self.arrivals}")
-
-        # If it's the first arrival update for the (function,class) pair
-        with ARRIVAL_RATES_LOCK:
-            if (f, c) not in self.prev_arrivals.keys():
-                self.arrival_rates.update({(f, c): self.arrivals[(f, c)] / self.time})
-            else:
-                new_arrivals = self.arrivals[(f, c)] - self.prev_arrivals[(f, c)]
-                new_rate = new_arrivals / (self.time - self.last_update_time)
-                self.arrival_rates[(f, c)] = (self.arrival_rate_alpha * new_rate +
-                                              (1.0 - self.arrival_rate_alpha) * self.arrival_rates[(f, c)])
-
     def update_bandwidth(self, bw_cloud: float, bw_edge: float):
         """
         Updates bandwidth values, whether if it's on cloud or edge
@@ -315,16 +267,15 @@ class NetworkMetrics:
         self.local_usable_memory_coeff = c
 
 
-def show_metrics():
-    # TODO
-    print("Sto mostrando le metriche")
+# def show_metrics():
+#    print("Sto mostrando le metriche")
 
 
-def periodic_show():
-    # Execute periodic update of metrics
-    ticker = threading.Event()
-    while not ticker.wait(WAIT_TIME_SECONDS):
-        show_metrics()
+# def periodic_show():
+# Execute periodic update of metrics
+#    ticker = threading.Event()
+#    while not ticker.wait(WAIT_TIME_SECONDS):
+#        show_metrics()
 
 
 def publish():
@@ -338,19 +289,8 @@ def publish():
     server.wait_for_termination()
 
 
-def update_membership() -> infra.Node:
-    """
-    Aggiorna la membership dei nodi della rete e ritorna il nodo da cui proviene la richiesta di esecuzione
-    :return: Node (local)
-    """
-    # TODO
-    # check if nodo è presente nella lista dei nodi della rete
-    # se è presente allora non aggiungerlo
-    # se non è presente allora aggiungilo
-
-
 def initializing_network() -> infra.Network:
-    # TODO set regions, latency and bandwidth from config
+    # TODO now useless and this is dummy
     region_cloud = infra.Region("cloud", True)
     region_edge1 = infra.Region("edge1", False)
     region_edge2 = infra.Region("edge2", False)
@@ -360,11 +300,10 @@ def initializing_network() -> infra.Network:
 
     # Add node cloud
     network = infra.Network(regions=regions, network_latency=net_latency, bandwidth_mbps=bandwidth_mbps)
-    network.add_node(infra.Node("nuvola", 1000, region=region_cloud, speedup=1), region=region_cloud)
-    network.add_node(infra.Node("pippo", 100, region=region_edge1, speedup=1), region=region_edge1)
-    network.add_node(infra.Node("pluto", 100, region=region_edge1, speedup=1), region=region_edge1)
-    network.add_node(infra.Node("topolino", 100, region=region_edge2, speedup=1), region=region_edge2)
-    print(network)
+    # network.add_node(infra.Node("nuvola", 1000, region=region_cloud, speedup=1), region=region_cloud)
+    # network.add_node(infra.Node("pippo", 100, region=region_edge1, speedup=1), region=region_edge1)
+    # network.add_node(infra.Node("pluto", 100, region=region_edge1, speedup=1), region=region_edge1)
+    # network.add_node(infra.Node("topolino", 100, region=region_edge2, speedup=1), region=region_edge2)
     return network
 
 
@@ -391,10 +330,10 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
             pC = values[1]
             pE = values[2]
             pD = values[3]
-            # FIXME remove print(f"pL: {pL}")
-            # FIXME remove print(f"pC: {pC}")
-            # FIXME remove print(f"pE: {pE}")
-            # FIXME remove print(f"pD: {pD}")
+            # FIXME AUDIT print(f"pL: {pL}")
+            # FIXME AUDIT print(f"pC: {pC}")
+            # FIXME AUDIT print(f"pE: {pE}")
+            # FIXME AUDIT print(f"pD: {pD}")
             share = shares.get((f, c))
             class_resp = solver_pb2.ClassResponse(name=c_name, pL=pL, pC=pC, pE=pE, pD=pD, share=share)
             if f not in f_c_resp:
@@ -407,17 +346,17 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
     f_responses = []
     for f in f_c_resp:
         f_name = f.name
-        # FIXME remove print(f"function name: {f_name}")
+        # FIXME AUDIT print(f"function name: {f_name}")
         c_responses = f_c_resp[f]
-        # FIXME remove print(f"c_responses: {c_responses}")
+        # FIXME AUDIT print(f"c_responses: {c_responses}")
         func_resp = solver_pb2.FunctionResponse(name=f_name)
         func_resp.class_responses.extend(c_responses)
         f_responses.append(func_resp)
 
-    # FIXME remove print(f"f_responses: {f_responses}")
+    # FIXME AUDIT print(f"f_responses: {f_responses}")
     response = solver_pb2.Response(time_taken=eval_time)
     response.f_response.extend(f_responses)
-    # FIXME remove print(f"response: {response}")
+    # FIXME AUDIT print(f"response: {response}")
     return response
 
 
@@ -442,7 +381,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
         self.net_metrics.update_time()
 
         # Recover useful data from incoming request
-        # FIXME REMOVE print("incoming functions: ", request.functions, "\n")
+        # FIXME AUDIT print("incoming functions: ", request.functions, "\n")
         total_memory = request.memory_local
         cloud_cost = request.cost_cloud
         local_budget = request.local_budget
@@ -468,7 +407,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                 total_new_arrivals += new_arrivals
 
                 if new_arrivals != 0:
-                    self.net_metrics.update_arrival_rates_2(function_name, class_name, arrivals=inv.arrivals)
+                    self.net_metrics.update_arrival_rates(function_name, class_name, arrivals=inv.arrivals)
 
                 self.net_metrics.update_service_time(function_name,
                                                      service_local=function.duration,
@@ -524,7 +463,6 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
         eval_t = time.process_time() - self.net_metrics.evaluation_time
         # Marshal probabilities into gRPC Response and send back to client
-        print(probs)
         response = prepare_response(probs, shares, eval_t)
         self.net_metrics.evaluation_time = time.process_time()
         return response
@@ -534,7 +472,7 @@ def serve():
     # Create a pool with 12 threads to execute code
     pool = futures.ThreadPoolExecutor(max_workers=12)
     # Execute periodic update of metrics
-    pool.submit(periodic_show)
+    # pool.submit(periodic_show)
     pool.submit(publish)
 
     # wait for all tasks to complete

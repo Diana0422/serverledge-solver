@@ -23,12 +23,12 @@ def update_probabilities(local_total_memory,
     VERBOSE = metrics.verbosity
     F = metrics.functions
     C = metrics.classes
-    print(f"functions: {metrics.functions}")
-    print(f"classes: {metrics.classes}")
     F_C = [(f, c) for f in F for c in C]
-    print(f"F_C: {F_C}")
 
     if VERBOSE > 1:
+        print(f"functions: {metrics.functions}")
+        print(f"classes: {metrics.classes}")
+        print(f"F_C: {F_C}")
         print("------------------------------")
         print(f"Edge memory: {aggregated_edge_memory}")
         print(f"Arrival rates: {arrival_rates}")
@@ -98,7 +98,7 @@ def update_probabilities(local_total_memory,
         print(f"Deadline Sat ProbC: {deadline_satisfaction_prob_cloud}")
         print(f"Deadline Sat ProbE: {deadline_satisfaction_prob_edge}")
         print("------------------------------")
-    print(f"arrival rates (f,c): {[arrival_rates[(f, c)] for f, c in F_C]}")
+        print(f"arrival rates (f,c): {[arrival_rates[(f, c)] for f, c in F_C]}")
 
     prob += (pl.lpSum([c.utility * arrival_rates[(f, c)] *
                        (pL[f][c] * deadline_satisfaction_prob_local[(f, c)] +
