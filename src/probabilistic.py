@@ -252,18 +252,12 @@ class ProbabilisticPolicyVertical(Policy):
             print(f"Usable memory: {self.local_usable_memory_coeff:.2f}")
 
         bandwidth = self.simulation.infra.get_bandwidth(self.node, self.cloud)
-        new_probs = optimizer.update_probabilities(self.node, self.cloud,
-                                                   self.simulation,
-                                                   self.arrival_rates,
-                                                   self.estimated_service_time,
-                                                   self.estimated_service_time_cloud,
-                                                   self.simulation.init_time,
-                                                   self.cloud_rtt,
-                                                   bandwidth,
-                                                   self.cold_start_prob_local,
-                                                   self.cold_start_prob_cloud,
-                                                   self.rt_percentile,
-                                                   self.local_budget, self.local_usable_memory_coeff)
+        new_probs = optimizer.update_probabilities(self.node, self.cloud, self.simulation, self.arrival_rates,
+                                                   self.estimated_service_time, self.estimated_service_time_cloud,
+                                                   self.simulation.init_time, self.cloud_rtt, bandwidth,
+                                                   self.cold_start_prob_local, self.cold_start_prob_cloud,
+                                                   self.rt_percentile, self.local_budget,
+                                                   self.local_usable_memory_coeff,,
         if new_probs is not None:
             self.probs = new_probs
             # print(f"[{self.node}] Probs: {self.probs}")
@@ -412,24 +406,13 @@ class ProbabilisticPolicyHorizontal(ProbabilisticPolicyVertical):
                 self.local_usable_memory_coeff = min(self.local_usable_memory_coeff * 1.1, 1.0)
             print(f"{self.node}: Usable memory: {self.local_usable_memory_coeff:.2f}")
 
-        new_probs = optimizer.update_probabilities(self.node, self.cloud,
-                                                   self.aggregated_edge_memory,
-                                                   self.simulation,
-                                                   self.arrival_rates,
-                                                   self.estimated_service_time,
-                                                   self.estimated_service_time_cloud,
-                                                   self.estimated_service_time_edge,
-                                                   self.init_time_local,
-                                                   self.init_time_cloud,
-                                                   self.init_time_edge,
-                                                   self.cloud_rtt,
-                                                   self.edge_rtt,
-                                                   self.cloud_bw,
-                                                   self.edge_bw,
-                                                   self.cold_start_prob_local,
-                                                   self.cold_start_prob_cloud,
-                                                   self.cold_start_prob_edge,
-                                                   self.local_budget,
+        new_probs = optimizer.update_probabilities(self.node, self.cloud, self.aggregated_edge_memory, self.simulation,
+                                                   self.arrival_rates, self.estimated_service_time,
+                                                   self.estimated_service_time_cloud, self.estimated_service_time_edge,
+                                                   self.init_time_local, self.init_time_cloud, self.init_time_edge,
+                                                   self.cloud_rtt, self.edge_rtt, self.cloud_bw, self.edge_bw,
+                                                   self.cold_start_prob_local, self.cold_start_prob_cloud,
+                                                   self.cold_start_prob_edge, self.local_budget,
                                                    self.local_usable_memory_coeff)
         if new_probs is not None:
             self.probs = new_probs

@@ -3,23 +3,21 @@ import conf
 import math
 import sys
 import pulp as pl
+import logging
+
+# Configura il registro
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 warm_start = False
 BETA_COST = 0.0
 
 
-def update_probabilities(local_total_memory,
-                         cloud_cost,
-                         aggregated_edge_memory,
-                         metrics,
-                         arrival_rates,
-                         serv_time, serv_time_cloud, serv_time_edge,
-                         init_time_local, init_time_cloud, init_time_edge,
-                         offload_time_cloud, offload_time_edge,
-                         bandwidth_cloud, bandwidth_edge,
-                         cold_start_p_local, cold_start_p_cloud, cold_start_p_edge,
-                         budget=-1,
-                         local_usable_memory_coeff=1.0):
+def update_probabilities(local_total_memory, cloud_cost, aggregated_edge_memory, metrics, arrival_rates, serv_time,
+                         serv_time_cloud, serv_time_edge, init_time_local, init_time_cloud, init_time_edge,
+                         offload_time_cloud, offload_time_edge, bandwidth_cloud, bandwidth_edge, cold_start_p_local,
+                         cold_start_p_cloud, cold_start_p_edge, budget=-1, local_usable_memory_coeff=1.0,
+                         log_queue=None):
     VERBOSE = metrics.verbosity
     F = metrics.functions
     C = metrics.classes
@@ -88,6 +86,14 @@ def update_probabilities(local_total_memory,
         except:
             pass
         deadline_satisfaction_prob_edge[(f, c)] = p
+
+    log_queue.put("*****************************************************************")
+    log_queue.put(f"arrival_rates: {arrival_rates}")
+    log_queue.put(f"deadline_satis_prob_local: {deadline_satisfaction_prob_local}")
+    log_queue.put(f"deadline_satis_prob_local: {deadline_satisfaction_prob_local}")
+    log_queue.put(f"deadline_satis_prob_edge: {deadline_satisfaction_prob_edge}")
+    log_queue.put(f"deadline_satis_prob_cloud: {deadline_satisfaction_prob_cloud}")
+    log_queue.put("")
 
     if VERBOSE > 1:
         print("------------------------------")

@@ -1,5 +1,6 @@
 import time
 import logging
+import queue
 
 from proto import solver_pb2_grpc, solver_pb2
 import grpc
@@ -8,13 +9,28 @@ import threading
 import properties as p, optimizer as opt, infrastructure as infra
 from faas import QoSClass, Function
 
-WAIT_TIME_SECONDS = 120
+WAIT_TIME_SECONDS = 60
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Crea una coda per i messaggi di registro
+log_queue = queue.Queue()
 
 ARRIVALS_LOCK = threading.Lock()
 PREV_ARRIVALS_LOCK = threading.Lock()
 ARRIVAL_RATES_LOCK = threading.Lock()
+
+
+def periodic_show():
+    # Execute periodic update of metrics
+    ticker = threading.Event()
+    while not ticker.wait(WAIT_TIME_SECONDS):
+        print("sono qui")
+        # Read messages from the queue and read the logs
+        while not log_queue.empty():
+            message = log_queue.get()
+            logger.info(message)
 
 
 def _insert_if_not_present(ls: list, key: str, o) -> bool:
@@ -71,7 +87,7 @@ class NetworkMetrics:
         self.cold_start_edge = {}  # probabilità di cold start edge per (f,c) (Function, float)
 
         # result
-        self.probs = {(f, c): [0.5, 0.25, 0.25, 0.0] for f in self.functions for c in self.classes}
+        self.probs = {(f, c): [1.0, 0.0, 0.0, 0.0] for f in self.functions for c in self.classes}
         self.evaluation_time = time.process_time()
 
     def _search_function(self, f_name: str) -> Function:
@@ -321,8 +337,6 @@ def prepare_response(probs: dict[(Function, QoSClass), [float]], shares: dict[(F
 
     for f, c in couples:
         c_name = c.name
-        print(c_name)
-
         # Get corresponding probabilities
         values = probs.get((f, c))
         if len(values) != 0:
@@ -427,15 +441,9 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                   bw_edge=function.bandwidth_edge)
 
         if total_new_arrivals != 0:
-            probs, shares = opt.update_probabilities(local_total_memory=total_memory,
-                                                     # input from client side
-                                                     cloud_cost=cloud_cost,
-                                                     # configuration client side
-                                                     aggregated_edge_memory=aggregated_memory,
-                                                     # calc. client side as the sum of memory available in nearby nodes
-                                                     metrics=self.net_metrics,
+            probs, shares = opt.update_probabilities(local_total_memory=total_memory, cloud_cost=cloud_cost,
+                                                     aggregated_edge_memory=aggregated_memory, metrics=self.net_metrics,
                                                      arrival_rates=self.net_metrics.arrival_rates,
-                                                     # updated value for each time interval as done in simulation
                                                      serv_time=self.net_metrics.service_time,
                                                      serv_time_cloud=self.net_metrics.service_time_cloud,
                                                      serv_time_edge=self.net_metrics.service_time_edge,
@@ -444,19 +452,14 @@ class Estimator(solver_pb2_grpc.SolverServicer):
                                                      init_time_edge=self.net_metrics.init_time_edge,
                                                      offload_time_cloud=self.net_metrics.offload_time_cloud,
                                                      offload_time_edge=self.net_metrics.offload_time_edge,
-                                                     # input calculated client side
                                                      bandwidth_cloud=self.net_metrics.bandwidth_cloud,
-                                                     # configuration client side
                                                      bandwidth_edge=self.net_metrics.bandwidth_edge,
-                                                     # configuration client side
                                                      cold_start_p_local=self.net_metrics.cold_start,
                                                      cold_start_p_cloud=self.net_metrics.cold_start_cloud,
                                                      cold_start_p_edge=self.net_metrics.cold_start_edge,
                                                      budget=local_budget,
-                                                     # configuration client side
-                                                     local_usable_memory_coeff=self.net_metrics.local_usable_memory_coeff
-                                                     # calc. client side using loss percentage of requests
-                                                     )
+                                                     local_usable_memory_coeff=self.net_metrics.local_usable_memory_coeff,
+                                                     log_queue=log_queue)
         else:
             probs = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
             shares = {(f, c): [] for f in self.net_metrics.functions for c in self.net_metrics.classes}
@@ -470,9 +473,9 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
 def serve():
     # Create a pool with 12 threads to execute code
-    pool = futures.ThreadPoolExecutor(max_workers=12)
+    pool = futures.ThreadPoolExecutor(max_workers=4)
     # Execute periodic update of metrics
-    # pool.submit(periodic_show)
+    pool.submit(periodic_show)
     pool.submit(publish)
 
     # wait for all tasks to complete
