@@ -30,7 +30,8 @@ def periodic_show():
         # Read messages from the queue and read the logs
         while not log_queue.empty():
             message = log_queue.get()
-            logger.info(message)
+            print(message)
+            #logger.info(message)
 
 
 def _insert_if_not_present(ls: list, key: str, o) -> bool:

@@ -93,7 +93,6 @@ def update_probabilities(local_total_memory, cloud_cost, aggregated_edge_memory,
     log_queue.put(f"deadline_satis_prob_local: {deadline_satisfaction_prob_local}")
     log_queue.put(f"deadline_satis_prob_edge: {deadline_satisfaction_prob_edge}")
     log_queue.put(f"deadline_satis_prob_cloud: {deadline_satisfaction_prob_cloud}")
-    log_queue.put("")
 
     if VERBOSE > 1:
         print("------------------------------")
@@ -182,6 +181,9 @@ def update_probabilities(local_total_memory, cloud_cost, aggregated_edge_memory,
         probs[(f, c)] = [x / s for x in probs[(f, c)]]
         if VERBOSE > 0:
             print(f"{f}-{c}: {probs[(f, c)]}")
+
+    log_queue.put(f"solution probs: {probs}")
+    log_queue.put("")
     return probs, shares
 
 
