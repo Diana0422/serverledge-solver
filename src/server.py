@@ -127,7 +127,10 @@ class NetworkMetrics:
         :return: None
         """
         function_name = function.name
-        func = Function(name=function_name, memory=function.memory, serviceMean=function.duration)
+        func = Function(name=function_name,
+                        memory=function.memory,
+                        serviceMean=function.duration,
+                        inputSizeMean=function.input_size)
         if not _insert_if_not_present(ls=self.functions, key=function_name, o=func):
             self.functions.append(func)
 
@@ -440,6 +443,12 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
                 self.net_metrics.update_bandwidth(bw_cloud=function.bandwidth_cloud,
                                                   bw_edge=function.bandwidth_edge)
+
+        # Set default probs based on policy
+        if request.policy == "edgeCloud":
+            self.net_metrics.probs = {(f, c): [0.333, 0.333, 0.333, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
+        else:
+            self.net_metrics.probs = {(f, c): [0.5, 0.5, 0.0, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
 
         if total_new_arrivals != 0:
             probs, shares = opt.update_probabilities(local_total_memory=total_memory, cloud_cost=cloud_cost,

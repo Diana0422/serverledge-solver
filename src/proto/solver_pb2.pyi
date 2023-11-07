@@ -6,7 +6,8 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Request(_message.Message):
-    __slots__ = ["offload_latency_cloud", "offload_latency_edge", "functions", "classes", "cost_cloud", "local_budget", "memory_local", "cpu_local", "memory_aggregate", "usable_memory_coefficient"]
+    __slots__ = ["policy", "offload_latency_cloud", "offload_latency_edge", "functions", "classes", "cost_cloud", "local_budget", "memory_local", "cpu_local", "memory_aggregate", "usable_memory_coefficient"]
+    POLICY_FIELD_NUMBER: _ClassVar[int]
     OFFLOAD_LATENCY_CLOUD_FIELD_NUMBER: _ClassVar[int]
     OFFLOAD_LATENCY_EDGE_FIELD_NUMBER: _ClassVar[int]
     FUNCTIONS_FIELD_NUMBER: _ClassVar[int]
@@ -17,6 +18,7 @@ class Request(_message.Message):
     CPU_LOCAL_FIELD_NUMBER: _ClassVar[int]
     MEMORY_AGGREGATE_FIELD_NUMBER: _ClassVar[int]
     USABLE_MEMORY_COEFFICIENT_FIELD_NUMBER: _ClassVar[int]
+    policy: str
     offload_latency_cloud: float
     offload_latency_edge: float
     functions: _containers.RepeatedCompositeFieldContainer[Function]
@@ -27,7 +29,7 @@ class Request(_message.Message):
     cpu_local: float
     memory_aggregate: float
     usable_memory_coefficient: float
-    def __init__(self, offload_latency_cloud: _Optional[float] = ..., offload_latency_edge: _Optional[float] = ..., functions: _Optional[_Iterable[_Union[Function, _Mapping]]] = ..., classes: _Optional[_Iterable[_Union[QosClass, _Mapping]]] = ..., cost_cloud: _Optional[float] = ..., local_budget: _Optional[float] = ..., memory_local: _Optional[float] = ..., cpu_local: _Optional[float] = ..., memory_aggregate: _Optional[float] = ..., usable_memory_coefficient: _Optional[float] = ...) -> None: ...
+    def __init__(self, policy: _Optional[str] = ..., offload_latency_cloud: _Optional[float] = ..., offload_latency_edge: _Optional[float] = ..., functions: _Optional[_Iterable[_Union[Function, _Mapping]]] = ..., classes: _Optional[_Iterable[_Union[QosClass, _Mapping]]] = ..., cost_cloud: _Optional[float] = ..., local_budget: _Optional[float] = ..., memory_local: _Optional[float] = ..., cpu_local: _Optional[float] = ..., memory_aggregate: _Optional[float] = ..., usable_memory_coefficient: _Optional[float] = ...) -> None: ...
 
 class FunctionInvocation(_message.Message):
     __slots__ = ["qos_class", "arrivals"]
@@ -38,7 +40,7 @@ class FunctionInvocation(_message.Message):
     def __init__(self, qos_class: _Optional[str] = ..., arrivals: _Optional[float] = ...) -> None: ...
 
 class Function(_message.Message):
-    __slots__ = ["name", "memory", "cpu", "invocations", "duration", "duration_offloaded_cloud", "duration_offloaded_edge", "init_time", "init_time_offloaded_cloud", "init_time_offloaded_edge", "pcold", "pcold_offloaded_cloud", "pcold_offloaded_edge", "bandwidth_cloud", "bandwidth_edge"]
+    __slots__ = ["name", "memory", "cpu", "invocations", "duration", "duration_offloaded_cloud", "duration_offloaded_edge", "init_time", "init_time_offloaded_cloud", "init_time_offloaded_edge", "pcold", "pcold_offloaded_cloud", "pcold_offloaded_edge", "bandwidth_cloud", "bandwidth_edge", "input_size"]
     NAME_FIELD_NUMBER: _ClassVar[int]
     MEMORY_FIELD_NUMBER: _ClassVar[int]
     CPU_FIELD_NUMBER: _ClassVar[int]
@@ -54,6 +56,7 @@ class Function(_message.Message):
     PCOLD_OFFLOADED_EDGE_FIELD_NUMBER: _ClassVar[int]
     BANDWIDTH_CLOUD_FIELD_NUMBER: _ClassVar[int]
     BANDWIDTH_EDGE_FIELD_NUMBER: _ClassVar[int]
+    INPUT_SIZE_FIELD_NUMBER: _ClassVar[int]
     name: str
     memory: int
     cpu: float
@@ -69,7 +72,8 @@ class Function(_message.Message):
     pcold_offloaded_edge: float
     bandwidth_cloud: float
     bandwidth_edge: float
-    def __init__(self, name: _Optional[str] = ..., memory: _Optional[int] = ..., cpu: _Optional[float] = ..., invocations: _Optional[_Iterable[_Union[FunctionInvocation, _Mapping]]] = ..., duration: _Optional[float] = ..., duration_offloaded_cloud: _Optional[float] = ..., duration_offloaded_edge: _Optional[float] = ..., init_time: _Optional[float] = ..., init_time_offloaded_cloud: _Optional[float] = ..., init_time_offloaded_edge: _Optional[float] = ..., pcold: _Optional[float] = ..., pcold_offloaded_cloud: _Optional[float] = ..., pcold_offloaded_edge: _Optional[float] = ..., bandwidth_cloud: _Optional[float] = ..., bandwidth_edge: _Optional[float] = ...) -> None: ...
+    input_size: float
+    def __init__(self, name: _Optional[str] = ..., memory: _Optional[int] = ..., cpu: _Optional[float] = ..., invocations: _Optional[_Iterable[_Union[FunctionInvocation, _Mapping]]] = ..., duration: _Optional[float] = ..., duration_offloaded_cloud: _Optional[float] = ..., duration_offloaded_edge: _Optional[float] = ..., init_time: _Optional[float] = ..., init_time_offloaded_cloud: _Optional[float] = ..., init_time_offloaded_edge: _Optional[float] = ..., pcold: _Optional[float] = ..., pcold_offloaded_cloud: _Optional[float] = ..., pcold_offloaded_edge: _Optional[float] = ..., bandwidth_cloud: _Optional[float] = ..., bandwidth_edge: _Optional[float] = ..., input_size: _Optional[float] = ...) -> None: ...
 
 class QosClass(_message.Message):
     __slots__ = ["name", "utility", "max_response_time", "completed_percentage"]

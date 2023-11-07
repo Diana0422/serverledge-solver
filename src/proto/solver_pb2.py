@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0csolver.proto\x12\x06solver\"\x9e\x02\n\x07Request\x12\x1d\n\x15offload_latency_cloud\x18\x01 \x02(\x02\x12\x1c\n\x14offload_latency_edge\x18\x02 \x02(\x02\x12#\n\tfunctions\x18\x03 \x03(\x0b\x32\x10.solver.Function\x12!\n\x07\x63lasses\x18\x04 \x03(\x0b\x32\x10.solver.QosClass\x12\x12\n\ncost_cloud\x18\x05 \x02(\x02\x12\x14\n\x0clocal_budget\x18\x06 \x02(\x02\x12\x14\n\x0cmemory_local\x18\x07 \x02(\x02\x12\x11\n\tcpu_local\x18\x08 \x02(\x02\x12\x18\n\x10memory_aggregate\x18\t \x02(\x02\x12!\n\x19usable_memory_coefficient\x18\n \x02(\x02\"9\n\x12\x46unctionInvocation\x12\x11\n\tqos_class\x18\x01 \x02(\t\x12\x10\n\x08\x61rrivals\x18\x02 \x02(\x02\"\x90\x03\n\x08\x46unction\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0e\n\x06memory\x18\x02 \x02(\x05\x12\x0b\n\x03\x63pu\x18\x03 \x02(\x02\x12/\n\x0binvocations\x18\x04 \x03(\x0b\x32\x1a.solver.FunctionInvocation\x12\x10\n\x08\x64uration\x18\x05 \x02(\x02\x12 \n\x18\x64uration_offloaded_cloud\x18\x06 \x02(\x02\x12\x1f\n\x17\x64uration_offloaded_edge\x18\x07 \x02(\x02\x12\x11\n\tinit_time\x18\x08 \x02(\x02\x12!\n\x19init_time_offloaded_cloud\x18\t \x02(\x02\x12 \n\x18init_time_offloaded_edge\x18\n \x02(\x02\x12\r\n\x05pcold\x18\x0b \x02(\x02\x12\x1d\n\x15pcold_offloaded_cloud\x18\x0c \x02(\x02\x12\x1c\n\x14pcold_offloaded_edge\x18\r \x02(\x02\x12\x17\n\x0f\x62\x61ndwidth_cloud\x18\x0e \x02(\x02\x12\x16\n\x0e\x62\x61ndwidth_edge\x18\x0f \x02(\x02\"b\n\x08QosClass\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0f\n\x07utility\x18\x02 \x02(\x02\x12\x19\n\x11max_response_time\x18\x03 \x02(\x02\x12\x1c\n\x14\x63ompleted_percentage\x18\x04 \x02(\x02\"\\\n\rClassResponse\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\n\n\x02pL\x18\x02 \x02(\x02\x12\n\n\x02pC\x18\x03 \x02(\x02\x12\n\n\x02pE\x18\x04 \x02(\x02\x12\n\n\x02pD\x18\x05 \x02(\x02\x12\r\n\x05share\x18\x06 \x02(\x02\"P\n\x10\x46unctionResponse\x12\x0c\n\x04name\x18\x01 \x02(\t\x12.\n\x0f\x63lass_responses\x18\x02 \x03(\x0b\x32\x15.solver.ClassResponse\"L\n\x08Response\x12,\n\nf_response\x18\x01 \x03(\x0b\x32\x18.solver.FunctionResponse\x12\x12\n\ntime_taken\x18\x02 \x02(\x02\x32\x34\n\x06Solver\x12*\n\x05Solve\x12\x0f.solver.Request\x1a\x10.solver.ResponseB$Z\"github.com/grussorusso/serverledge')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0csolver.proto\x12\x06solver\"\xae\x02\n\x07Request\x12\x0e\n\x06policy\x18\x01 \x02(\t\x12\x1d\n\x15offload_latency_cloud\x18\x02 \x02(\x02\x12\x1c\n\x14offload_latency_edge\x18\x03 \x02(\x02\x12#\n\tfunctions\x18\x04 \x03(\x0b\x32\x10.solver.Function\x12!\n\x07\x63lasses\x18\x05 \x03(\x0b\x32\x10.solver.QosClass\x12\x12\n\ncost_cloud\x18\x06 \x02(\x02\x12\x14\n\x0clocal_budget\x18\x07 \x02(\x02\x12\x14\n\x0cmemory_local\x18\x08 \x02(\x02\x12\x11\n\tcpu_local\x18\t \x02(\x02\x12\x18\n\x10memory_aggregate\x18\n \x02(\x02\x12!\n\x19usable_memory_coefficient\x18\x0b \x02(\x02\"9\n\x12\x46unctionInvocation\x12\x11\n\tqos_class\x18\x01 \x02(\t\x12\x10\n\x08\x61rrivals\x18\x02 \x02(\x02\"\xa4\x03\n\x08\x46unction\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0e\n\x06memory\x18\x02 \x02(\x05\x12\x0b\n\x03\x63pu\x18\x03 \x02(\x02\x12/\n\x0binvocations\x18\x04 \x03(\x0b\x32\x1a.solver.FunctionInvocation\x12\x10\n\x08\x64uration\x18\x05 \x02(\x02\x12 \n\x18\x64uration_offloaded_cloud\x18\x06 \x02(\x02\x12\x1f\n\x17\x64uration_offloaded_edge\x18\x07 \x02(\x02\x12\x11\n\tinit_time\x18\x08 \x02(\x02\x12!\n\x19init_time_offloaded_cloud\x18\t \x02(\x02\x12 \n\x18init_time_offloaded_edge\x18\n \x02(\x02\x12\r\n\x05pcold\x18\x0b \x02(\x02\x12\x1d\n\x15pcold_offloaded_cloud\x18\x0c \x02(\x02\x12\x1c\n\x14pcold_offloaded_edge\x18\r \x02(\x02\x12\x17\n\x0f\x62\x61ndwidth_cloud\x18\x0e \x02(\x02\x12\x16\n\x0e\x62\x61ndwidth_edge\x18\x0f \x02(\x02\x12\x12\n\ninput_size\x18\x10 \x02(\x02\"b\n\x08QosClass\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0f\n\x07utility\x18\x02 \x02(\x02\x12\x19\n\x11max_response_time\x18\x03 \x02(\x02\x12\x1c\n\x14\x63ompleted_percentage\x18\x04 \x02(\x02\"\\\n\rClassResponse\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\n\n\x02pL\x18\x02 \x02(\x02\x12\n\n\x02pC\x18\x03 \x02(\x02\x12\n\n\x02pE\x18\x04 \x02(\x02\x12\n\n\x02pD\x18\x05 \x02(\x02\x12\r\n\x05share\x18\x06 \x02(\x02\"P\n\x10\x46unctionResponse\x12\x0c\n\x04name\x18\x01 \x02(\t\x12.\n\x0f\x63lass_responses\x18\x02 \x03(\x0b\x32\x15.solver.ClassResponse\"L\n\x08Response\x12,\n\nf_response\x18\x01 \x03(\x0b\x32\x18.solver.FunctionResponse\x12\x12\n\ntime_taken\x18\x02 \x02(\x02\x32\x34\n\x06Solver\x12*\n\x05Solve\x12\x0f.solver.Request\x1a\x10.solver.ResponseB$Z\"github.com/grussorusso/serverledge')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -23,19 +23,19 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z\"github.com/grussorusso/serverledge'
   _globals['_REQUEST']._serialized_start=25
-  _globals['_REQUEST']._serialized_end=311
-  _globals['_FUNCTIONINVOCATION']._serialized_start=313
-  _globals['_FUNCTIONINVOCATION']._serialized_end=370
-  _globals['_FUNCTION']._serialized_start=373
-  _globals['_FUNCTION']._serialized_end=773
-  _globals['_QOSCLASS']._serialized_start=775
-  _globals['_QOSCLASS']._serialized_end=873
-  _globals['_CLASSRESPONSE']._serialized_start=875
-  _globals['_CLASSRESPONSE']._serialized_end=967
-  _globals['_FUNCTIONRESPONSE']._serialized_start=969
-  _globals['_FUNCTIONRESPONSE']._serialized_end=1049
-  _globals['_RESPONSE']._serialized_start=1051
-  _globals['_RESPONSE']._serialized_end=1127
-  _globals['_SOLVER']._serialized_start=1129
-  _globals['_SOLVER']._serialized_end=1181
+  _globals['_REQUEST']._serialized_end=327
+  _globals['_FUNCTIONINVOCATION']._serialized_start=329
+  _globals['_FUNCTIONINVOCATION']._serialized_end=386
+  _globals['_FUNCTION']._serialized_start=389
+  _globals['_FUNCTION']._serialized_end=809
+  _globals['_QOSCLASS']._serialized_start=811
+  _globals['_QOSCLASS']._serialized_end=909
+  _globals['_CLASSRESPONSE']._serialized_start=911
+  _globals['_CLASSRESPONSE']._serialized_end=1003
+  _globals['_FUNCTIONRESPONSE']._serialized_start=1005
+  _globals['_FUNCTIONRESPONSE']._serialized_end=1085
+  _globals['_RESPONSE']._serialized_start=1087
+  _globals['_RESPONSE']._serialized_end=1163
+  _globals['_SOLVER']._serialized_start=1165
+  _globals['_SOLVER']._serialized_end=1217
 # @@protoc_insertion_point(module_scope)
