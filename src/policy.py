@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from pacsltk import perfmodel
 
 import conf
 

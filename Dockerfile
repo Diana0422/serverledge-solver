@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.9
+FROM python:3.9-alpine
 
 WORKDIR /usr/serverledge-solver
 
@@ -7,8 +7,8 @@ COPY requirements.txt requirements.txt
 COPY config.properties config.properties
 COPY src/proto src/proto
 
-RUN apt-get update -y
-RUN apt-get install -y glpk-utils
+RUN apk update
+RUN apk add glpk-dev
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 COPY src ./src

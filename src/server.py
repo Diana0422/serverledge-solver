@@ -446,7 +446,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
         # Set default probs based on policy
         if request.policy == "edgeCloud":
-            self.net_metrics.probs = {(f, c): [0.333, 0.333, 0.333, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
+            self.net_metrics.probs = {(f, c): [0.334, 0.333, 0.333, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
         else:
             self.net_metrics.probs = {(f, c): [0.5, 0.5, 0.0, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
 
