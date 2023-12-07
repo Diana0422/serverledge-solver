@@ -143,6 +143,7 @@ class NetworkMetrics:
         class_name = c.name
         qos_class = QoSClass(name=class_name, min_completion_percentage=c.completed_percentage, arrival_weight=1,
                              max_rt=c.max_response_time)
+        print(c.max_response_time)
 
         if qos_class.max_rt < 0:
             # No constraint on maximum response time for the class
@@ -446,7 +447,7 @@ class Estimator(solver_pb2_grpc.SolverServicer):
 
         # Set default probs based on policy
         if request.policy == "edgeCloud":
-            self.net_metrics.probs = {(f, c): [0.334, 0.333, 0.333, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
+            self.net_metrics.probs = {(f, c): [0.5, 0.25, 0.25, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
         else:
             self.net_metrics.probs = {(f, c): [0.5, 0.5, 0.0, 0.0] for f in self.net_metrics.functions for c in self.net_metrics.classes}
 
